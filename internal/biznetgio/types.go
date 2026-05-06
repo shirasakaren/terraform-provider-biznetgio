@@ -88,3 +88,4 @@ func (k *KeypairResource) UnmarshalJSON(b []byte) error {
 	}
 	k.KeypairID = int64(a.KeypairID)
 	k.Name = a.Name
+// wip 44
