@@ -223,3 +223,4 @@ func (r *NeoliteVMFromSnapshotResource) Read(ctx context.Context, req resource.R
 	if err != nil {
 		if biznetgio.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
+// wip 39
