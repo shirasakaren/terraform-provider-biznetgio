@@ -82,3 +82,4 @@ func (r *BaremetalResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Computed:            true,
 				Default:             stringdefault.StaticString("ubuntu-22"),
 				MarkdownDescription: "OS yang dipasang saat create, dari `GET /baremetals/products/{product_id}/oss`. Default `ubuntu-22`.",
+// wip 58
