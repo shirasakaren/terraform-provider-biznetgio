@@ -238,3 +238,4 @@ func TestAccNeoliteProDisk_basic(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
 		CheckDestroy:             testAccCheckNeoliteProDiskDestroy,
+// wip 90
