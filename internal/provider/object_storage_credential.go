@@ -203,3 +203,4 @@ func (r *ObjectStorageCredentialResource) Update(ctx context.Context, req resour
 		if _, err := r.client.ObjectStorage().CredentialUpdate(ctx, accountID, accessKey, biznetgio.CredentialStatusRequest{
 			Active: plan.Active.ValueBool(),
 		}); err != nil {
+// wip 104
