@@ -82,4 +82,129 @@ func (r *BaremetalResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Computed:            true,
 				Default:             stringdefault.StaticString("ubuntu-22"),
 				MarkdownDescription: "OS yang dipasang saat create, dari `GET /baremetals/products/{product_id}/oss`. Default `ubuntu-22`.",
-// wip 58
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"keypair_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Id keypair dari `biznetgio_baremetal_keypair`. Keypair pool baremetal terpisah dari neolite/gpu.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+			"label": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "Nama tampilan server. Satu-satunya field yang bisa diupdate via `PUT /baremetals/{account_id}`.",
+			},
+			"public_ip": schema.Int64Attribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             int64default.StaticInt64(1),
+				MarkdownDescription: "Jumlah public ip yang diminta (1 = dengan public ip). Enum `Public_IP_options`.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+			"promocode": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Kode promo.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"pay_with_credit_card": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(true),
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.",
+			},
+			"power_state": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Power state server: `on` atau `off`. Update hanya mengirim `PUT .../state/{state}` kalau nilainya berubah.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"reset_trigger": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Trigger one-shot reset/reboot: ganti nilainya buat re-trigger. Reset cuma aksi, bukan state stabil.",
+			},
+			"rebuild_os": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Kalau berubah, instance di-rebuild (wipe OS) pake `PUT /baremetals/{account_id}/rebuild`. List OS valid ada di data source `biznetgio_baremetal_rebuild_os_list`.",
+			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Status terakhir dari API (misal Active, Pending, Suspended, Terminated).",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"order_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Order id dari response create.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"ip_address": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Public ip address server kalau ada di response.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"created_at": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Tanggal dibuat (alias created_at/date_created).",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON response terakhir dari API, buat akses field yang belum dimodel.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *BaremetalResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *BaremetalResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data BaremetalResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !data.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+	out, err := r.client.Baremetal().Create(ctx, biznetgio.BaremetalCreateRequest{
+		ProductID:        data.ProductID.ValueInt64(),
+		Cycle:            data.Cycle.ValueString(),
+		SelectOS:         data.SelectOS.ValueString(),
+		KeypairID:        data.KeypairID.ValueInt64(),
+		Label:            data.Label.ValueString(),
+		PublicIP:         data.PublicIP.ValueInt64(),
+		Promocode:        data.Promocode.ValueString(),
+		PayInvoiceWithCC: cc,
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create baremetal: %s", err))
+		return
+	}
