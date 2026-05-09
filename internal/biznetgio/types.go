@@ -88,4 +88,48 @@ func (k *KeypairResource) UnmarshalJSON(b []byte) error {
 	}
 	k.KeypairID = int64(a.KeypairID)
 	k.Name = a.Name
-// wip 44
+	k.PublicKey = a.PublicKey
+	return nil
+}
+
+type jsonInt64 int64
+
+func (n *jsonInt64) UnmarshalJSON(b []byte) error {
+	b = bytes.TrimSpace(b)
+	if len(b) > 0 && b[0] == '"' {
+		var s string
+		if err := json.Unmarshal(b, &s); err != nil {
+			return err
+		}
+		v, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return err
+		}
+		*n = jsonInt64(v)
+		return nil
+	}
+	var v int64
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*n = jsonInt64(v)
+	return nil
+}
+
+type PlanResource struct {
+	ProductID    int64     `json:"product_id"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	CategoryID   int64     `json:"category_id"`
+	CategoryName string    `json:"category_name"`
+	Options      Options   `json:"options"`
+	Billing      []Billing `json:"billing"`
+}
+
+type Options struct {
+	Type           string `json:"type"`
+	Cores          int64  `json:"cores"`
+	Memory         int64  `json:"memory"`
+	AllowDowngrade int64  `json:"allow_downgrade"`
+}
+
