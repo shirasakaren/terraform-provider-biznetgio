@@ -166,3 +166,171 @@ func (r *BaremetalResource) Configure(_ context.Context, req resource.ConfigureR
 	}
 	client, ok := req.ProviderData.(*biznetgio.Client)
 	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *BaremetalResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data BaremetalResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !data.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+	out, err := r.client.Baremetal().Create(ctx, biznetgio.BaremetalCreateRequest{
+		ProductID:        data.ProductID.ValueInt64(),
+		Cycle:            data.Cycle.ValueString(),
+		SelectOS:         data.SelectOS.ValueString(),
+		KeypairID:        data.KeypairID.ValueInt64(),
+		Label:            data.Label.ValueString(),
+		PublicIP:         data.PublicIP.ValueInt64(),
+		Promocode:        data.Promocode.ValueString(),
+		PayInvoiceWithCC: cc,
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create baremetal: %s", err))
+		return
+	}
+	accountID := aliasInt(out, "account_id", "id")
+	if accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create baremetal response tidak ada account_id: %s", rawJSON(out)))
+		return
+	}
+	data.ID = types.StringValue(strconv.FormatInt(accountID, 10))
+	data.AccountID = types.Int64Value(accountID)
+	data.OrderID = types.StringValue(aliasStr(out, "order_id", "orderid"))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	tflog.Info(ctx, "baremetal created, menunggu active", map[string]any{"account_id": accountID})
+	done, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.Baremetal().AccountGet(ctx, accountID)
+		},
+		lowerStatus, []string{"active"}, []string{"terminated", "error", "failed"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Baremetal %d gagal jadi active: %s", accountID, err))
+		return
+	}
+	data.Status = types.StringValue(aliasStr(done, "status", "state"))
+	data.Raw = types.StringValue(rawJSON(done))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *BaremetalResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data BaremetalResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil || accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid baremetal id: %q", data.ID.ValueString()))
+		return
+	}
+
+	out, err := r.client.Baremetal().AccountGet(ctx, accountID)
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read baremetal %d: %s", accountID, err))
+		return
+	}
+
+	data.AccountID = types.Int64Value(accountID)
+	data.Status = types.StringValue(aliasStr(out, "status", "state"))
+	if v := aliasStr(out, "order_id", "orderid"); v != "" {
+		data.OrderID = types.StringValue(v)
+	}
+	if v := aliasStr(out, "ip", "public_ip", "ip_address", "ipv4"); v != "" {
+		data.IPAddress = types.StringValue(v)
+	}
+	if v := aliasStr(out, "created_at", "date_created"); v != "" {
+		data.CreatedAt = types.StringValue(v)
+	}
+	data.Raw = types.StringValue(rawJSON(out))
+
+	// power state via endpoint khusus; kalau gagal, keep value lama.
+	if st, err := r.client.Baremetal().StateGet(ctx, accountID); err == nil {
+		if v := aliasStr(st, "state", "status"); v != "" {
+			data.PowerState = types.StringValue(v)
+		}
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *BaremetalResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state BaremetalResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	accountID, err := strconv.ParseInt(state.ID.ValueString(), 10, 64)
+	if err != nil || accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid baremetal id: %q", state.ID.ValueString()))
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	// update label via PUT
+	if !plan.Label.Equal(state.Label) {
+		if _, err := r.client.Baremetal().UpdateLabel(ctx, accountID, biznetgio.BaremetalUpdateLabelRequest{Label: plan.Label.ValueString()}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update baremetal label: %s", err))
+			return
+		}
+		state.Label = plan.Label
+	}
+
+	// power state: on/off — cuma kirim kalau berubah
+	if !plan.PowerState.IsUnknown() && !plan.PowerState.Equal(state.PowerState) {
+		ps := plan.PowerState.ValueString()
+		if err := r.client.Baremetal().StateSet(ctx, accountID, ps); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set baremetal power state %q: %s", ps, err))
+			return
+		}
+		state.PowerState = plan.PowerState
+	}
+
+	// reset = one-shot action via trigger
+	if !plan.ResetTrigger.IsUnknown() && !plan.ResetTrigger.Equal(state.ResetTrigger) {
+		if err := r.client.Baremetal().StateSet(ctx, accountID, "reset"); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to reset baremetal: %s", err))
+			return
+		}
+		state.ResetTrigger = plan.ResetTrigger
+	}
+
+	// rebuild OS: destruktif, cuma kalau rebuild_os berubah
+	if !plan.RebuildOS.IsUnknown() && !plan.RebuildOS.Equal(state.RebuildOS) {
+		os := plan.RebuildOS.ValueString()
+		if _, err := r.client.Baremetal().Rebuild(ctx, accountID, biznetgio.BaremetalRebuildRequest{OS: os}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to rebuild baremetal: %s", err))
+			return
