@@ -118,3 +118,4 @@ func (r *NeoliteDiskResource) Schema(ctx context.Context, _ resource.SchemaReque
 				MarkdownDescription: "Status disk (Active, Pending, Suspended, Terminated).",
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+// wip 112
