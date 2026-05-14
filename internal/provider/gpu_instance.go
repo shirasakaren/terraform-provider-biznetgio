@@ -527,3 +527,4 @@ func gpuStringDefault(m map[string]any, keys ...string) string {
 func NewGpuInstanceResource() resource.Resource {
 	return &GpuInstanceResource{}
 }
+// wip 126
