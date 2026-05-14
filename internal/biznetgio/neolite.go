@@ -133,4 +133,93 @@ func (s *NeoliteService) VMChangePackage(ctx context.Context, accountID int64, r
 	}
 	return &out, nil
 }
-// wip 129
+
+func (s *NeoliteService) VMChangeStorage(ctx context.Context, accountID int64, req NeoliteUpgradeStorageRequest) (*BillingResource, error) {
+	var out BillingResource
+	err := s.client.doJSON(ctx, "PUT", fmt.Sprintf("/neolites/accounts/%d/storage", accountID), req, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (s *NeoliteService) ChangePackagePrepare(ctx context.Context, accountID int64) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/accounts/%d/change-package", accountID), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) StoragePrepare(ctx context.Context, accountID int64) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/accounts/%d/storage", accountID), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) SnapshotCreate(ctx context.Context, accountID int64, req NeoliteSnapshotRequest) (*BillingResource, error) {
+	var out BillingResource
+	err := s.client.doJSON(ctx, "POST", fmt.Sprintf("/neolites/accounts/%d/snapshot", accountID), req, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (s *NeoliteService) MigrateToPro(ctx context.Context, accountID int64, req MigrateToProRequest) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "POST", fmt.Sprintf("/neolites/accounts/%d/migrate-to-pro", accountID), req, &out)
+	return out, err
+}
+
+func (s *NeoliteService) MigrateToProProducts(ctx context.Context, accountID int64) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/accounts/%d/migrate-to-pro/products", accountID), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) DiskCreate(ctx context.Context, req NeoliteDiskCreateRequest) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "POST", "/neolites/disks", req, &out)
+	return out, err
+}
+
+func (s *NeoliteService) DiskList(ctx context.Context, status string) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", "/neolites/disks/accounts"+statusQuery(status), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) DiskGet(ctx context.Context, accountID int64) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/disks/accounts/%d", accountID), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) DiskUpgrade(ctx context.Context, accountID int64, req NeoliteDiskUpgradeRequest) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "PUT", fmt.Sprintf("/neolites/disks/accounts/%d", accountID), req, &out)
+	return out, err
+}
+
+func (s *NeoliteService) DiskDelete(ctx context.Context, accountID int64) error {
+	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/neolites/disks/%d", accountID), nil, nil)
+}
+
+func (s *NeoliteService) DiskProducts(ctx context.Context) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", "/neolites/disks/products", nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) DiskProductGet(ctx context.Context, productID int64) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/disks/products/%d", productID), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) AccountSnapshotList(ctx context.Context, status string) ([]SnapshotAccountResource, error) {
+	var out []SnapshotAccountResource
+	err := s.client.doJSON(ctx, "GET", "/neolites/snapshots/accounts"+statusQuery(status), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) AccountSnapshotGet(ctx context.Context, accountID int64) (SnapshotAccountResource, error) {
