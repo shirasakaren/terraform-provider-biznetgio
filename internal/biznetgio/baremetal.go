@@ -70,3 +70,4 @@ func (s *BaremetalService) KeypairCreate(ctx context.Context, req KeypairCreateR
 
 func (s *BaremetalService) KeypairImport(ctx context.Context, req KeypairImportRequest) (map[string]any, error) {
 	var out map[string]any
+// wip 152
