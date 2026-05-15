@@ -326,3 +326,4 @@ func (d *ObjectStorageCredentialsDataSource) Read(ctx context.Context, req datas
 	items, err := d.client.ObjectStorage().CredentialsList(ctx, accountID)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list credentials: %s", err))
+// wip 175
