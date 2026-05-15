@@ -369,3 +369,159 @@ func (d *NeoliteChangePackageOptionsDataSource) Read(ctx context.Context, req da
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get neolite change-package options: %s", err))
 		return
+	}
+
+	data.ID = types.StringValue(fmt.Sprintf("neolite-change-package-%d", data.AccountID.ValueInt64()))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- biznetgio_neolite_storage_upgrade_options ----------
+
+type NeoliteStorageUpgradeOptionsDataSource struct {
+	client *biznetgio.Client
+}
+
+type NeoliteStorageUpgradeOptionsDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	AccountID types.Int64  `tfsdk:"account_id"`
+	Raw       types.String `tfsdk:"raw"`
+}
+
+func NewNeoliteStorageUpgradeOptionsDataSource() datasource.DataSource {
+	return &NeoliteStorageUpgradeOptionsDataSource{}
+}
+
+func (d *NeoliteStorageUpgradeOptionsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_storage_upgrade_options"
+}
+
+func (d *NeoliteStorageUpgradeOptionsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Opsi upgrade storage (harga per GB) untuk akun NEO Lite. Response endpoint undocumented, jadi di-export mentah sebagai `raw` JSON.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Data source id statis.",
+			},
+			"account_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Account id VM NEO Lite.",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON response opsi upgrade storage.",
+			},
+		},
+	}
+}
+
+func (d *NeoliteStorageUpgradeOptionsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	d.client = client
+}
+
+func (d *NeoliteStorageUpgradeOptionsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data NeoliteStorageUpgradeOptionsDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	out, err := d.client.Neolite().StoragePrepare(ctx, data.AccountID.ValueInt64())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get neolite storage upgrade options: %s", err))
+		return
+	}
+
+	data.ID = types.StringValue(fmt.Sprintf("neolite-storage-upgrade-%d", data.AccountID.ValueInt64()))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- biznetgio_neolite_ip_availability ----------
+
+type NeoliteIPAvailabilityDataSource struct {
+	client *biznetgio.Client
+}
+
+type NeoliteIPAvailabilityDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	ProductID types.Int64  `tfsdk:"product_id"`
+	Available types.Bool   `tfsdk:"available"`
+}
+
+func NewNeoliteIPAvailabilityDataSource() datasource.DataSource {
+	return &NeoliteIPAvailabilityDataSource{}
+}
+
+func (d *NeoliteIPAvailabilityDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_ip_availability"
+}
+
+func (d *NeoliteIPAvailabilityDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Cek ketersediaan public IP untuk product NEO Lite.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Data source id statis.",
+			},
+			"product_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Product id NEO Lite.",
+			},
+			"available": schema.BoolAttribute{
+				Computed:            true,
+				MarkdownDescription: "True kalau IP tersedia.",
+			},
+		},
+	}
+}
+
+func (d *NeoliteIPAvailabilityDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	d.client = client
+}
+
+func (d *NeoliteIPAvailabilityDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data NeoliteIPAvailabilityDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	out, err := d.client.Neolite().ProductIPAvailability(ctx, data.ProductID.ValueInt64())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get neolite ip availability: %s", err))
+		return
+	}
+
+	data.ID = types.StringValue(fmt.Sprintf("neolite-ip-availability-%d", data.ProductID.ValueInt64()))
+	data.Available = types.BoolValue(out.Available)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
