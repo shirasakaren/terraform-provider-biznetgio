@@ -157,3 +157,4 @@ func (r *GpuInstanceResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"status": schema.StringAttribute{
 				Computed:            true,
+// wip 184
