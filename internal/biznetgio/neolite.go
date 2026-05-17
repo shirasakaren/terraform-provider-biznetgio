@@ -223,3 +223,48 @@ func (s *NeoliteService) AccountSnapshotList(ctx context.Context, status string)
 }
 
 func (s *NeoliteService) AccountSnapshotGet(ctx context.Context, accountID int64) (SnapshotAccountResource, error) {
+	var out SnapshotAccountResource
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/snapshots/accounts/%d", accountID), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) SnapshotRestoreWith(ctx context.Context, accountID int64, req NeoliteFromSnapshotRequest) (*BillingResource, error) {
+	var out BillingResource
+	err := s.client.doJSON(ctx, "POST", fmt.Sprintf("/neolites/snapshots/accounts/%d/create", accountID), req, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (s *NeoliteService) SnapshotRestore(ctx context.Context, accountID int64) error {
+	return s.client.doJSON(ctx, "PUT", fmt.Sprintf("/neolites/snapshots/accounts/%d/restore", accountID), nil, nil)
+}
+
+func (s *NeoliteService) SnapshotDelete(ctx context.Context, accountID int64) error {
+	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/neolites/snapshots/%d", accountID), nil, nil)
+}
+
+func (s *NeoliteService) SnapshotProducts(ctx context.Context) ([]PlanResource, error) {
+	var out []PlanResource
+	err := s.client.doJSON(ctx, "GET", "/neolites/snapshots/products", nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) SnapshotProductGet(ctx context.Context, productID int64) (PlanResource, error) {
+	var out PlanResource
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/snapshots/products/%d", productID), nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) KeypairList(ctx context.Context) ([]KeypairResource, error) {
+	var out []KeypairResource
+	err := s.client.doJSON(ctx, "GET", "/neolites/keypairs/", nil, &out)
+	return out, err
+}
+
+func (s *NeoliteService) KeypairCreate(ctx context.Context, req KeypairCreateRequest) (*KeypairResource, error) {
+	var out KeypairResource
+	err := s.client.doJSON(ctx, "POST", "/neolites/keypairs/", req, &out)
+	if err != nil {
+		return nil, err
