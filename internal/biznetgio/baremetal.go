@@ -70,4 +70,39 @@ func (s *BaremetalService) KeypairCreate(ctx context.Context, req KeypairCreateR
 
 func (s *BaremetalService) KeypairImport(ctx context.Context, req KeypairImportRequest) (map[string]any, error) {
 	var out map[string]any
-// wip 152
+	err := s.client.doJSON(ctx, "POST", "/baremetals/keypairs/import", req, &out)
+	return out, err
+}
+
+func (s *BaremetalService) KeypairDelete(ctx context.Context, keypairID int64) error {
+	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/baremetals/keypairs/%d", keypairID), nil, nil)
+}
+
+func (s *BaremetalService) OpenVPN(ctx context.Context) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", "/baremetals/openvpn", nil, &out)
+	return out, err
+}
+
+func (s *BaremetalService) ProductsList(ctx context.Context) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", "/baremetals/products", nil, &out)
+	return out, err
+}
+
+func (s *BaremetalService) ProductGet(ctx context.Context, productID int64) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/baremetals/products/%d", productID), nil, &out)
+	return out, err
+}
+
+func (s *BaremetalService) ProductOSList(ctx context.Context, productID int64) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/baremetals/products/%d/oss", productID), nil, &out)
+	return out, err
+}
+
+func (s *BaremetalService) States(ctx context.Context) ([]string, error) {
+	var out []string
+	err := s.client.doJSON(ctx, "GET", "/baremetals/states", nil, &out)
+	return out, err
