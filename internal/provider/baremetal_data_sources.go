@@ -127,4 +127,46 @@ func (d *BaremetalRebuildOSListDataSource) Schema(_ context.Context, _ datasourc
 		MarkdownDescription: "List OS yang valid buat rebuild (`GET /baremetals/{account_id}/rebuild/oss`) — lebih sempit dari OS list create karena ngikutin layout disk instance.",
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.Int64Attribute{
-// wip 197
+				Required:            true,
+				MarkdownDescription: "Account id baremetal yang mau di-rebuild.",
+			},
+			"oss": schema.ListAttribute{
+				Computed:            true,
+				ElementType:         types.StringType,
+				MarkdownDescription: "List identifier OS (misal `centos7-base`).",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON response.",
+			},
+		},
+	}
+}
+
+func (d *BaremetalRebuildOSListDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	d.client = client
+}
+
+func (d *BaremetalRebuildOSListDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data BaremetalRebuildOSListDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	items, err := d.client.Baremetal().RebuildOSList(ctx, data.AccountID.ValueInt64())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list rebuild oss: %s", err))
+		return
