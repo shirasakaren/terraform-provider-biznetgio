@@ -3,3 +3,4 @@ resource "biznetgio_object_storage_credential" "example" {
   account_id = biznetgio_object_storage.example.id
   active     = true
 }
+# wip 188
