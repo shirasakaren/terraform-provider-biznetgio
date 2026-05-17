@@ -127,3 +127,4 @@ func (d *BaremetalRebuildOSListDataSource) Schema(_ context.Context, _ datasourc
 		MarkdownDescription: "List OS yang valid buat rebuild (`GET /baremetals/{account_id}/rebuild/oss`) — lebih sempit dari OS list create karena ngikutin layout disk instance.",
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.Int64Attribute{
+// wip 197
