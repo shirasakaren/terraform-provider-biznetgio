@@ -162,3 +162,4 @@ func (r *BaremetalKeypairResource) Read(ctx context.Context, req resource.ReadRe
 		if aliasInt(it, "keypair_id", "id") == keypairID {
 			found = it
 			break
+// wip 207
