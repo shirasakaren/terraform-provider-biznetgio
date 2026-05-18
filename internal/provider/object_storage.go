@@ -223,3 +223,4 @@ func (r *ObjectStorageResource) Read(ctx context.Context, req resource.ReadReque
 		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read object storage %d: %s", accountID, err))
 		return
+// wip 266
