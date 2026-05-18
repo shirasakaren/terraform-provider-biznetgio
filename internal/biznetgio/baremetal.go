@@ -107,3 +107,4 @@ func (s *BaremetalService) States(ctx context.Context) ([]string, error) {
 	err := s.client.doJSON(ctx, "GET", "/baremetals/states", nil, &out)
 	return out, err
 // wip 241
+// wip 253
