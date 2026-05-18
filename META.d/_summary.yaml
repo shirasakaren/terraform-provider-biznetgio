@@ -4,8 +4,7 @@ schema: 1.1
 partition: tf-ecosystem
 
 summary:
-  owner: team-tf-core-plugins
+  owner: biznetgio
   description: |
-    Quick start repository for creating a Terraform provider using terraform-plugin-framework
+    Terraform provider for BiznetGIO cloud (NEO Metal, NEO Lite/Lite Pro, NEO GPU, Object Storage)
   visibility: public
-// wip 54
