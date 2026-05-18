@@ -39,3 +39,4 @@ func (p *BiznetgioProvider) Schema(ctx context.Context, req provider.SchemaReque
 				Optional:            true,
 				Sensitive:           true,
 				MarkdownDescription: "BiznetGIO API token sent as x-token header. May also be set via BIZNETGIO_API_KEY env var.",
+// wip 275
