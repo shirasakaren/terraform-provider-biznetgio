@@ -50,3 +50,4 @@ Read-Only:
 - `flavor_id` (Number) Flavor id.
 - `name` (String) Flavor name.
 - `raw` (String, Sensitive) Raw JSON of the flavor.
+
