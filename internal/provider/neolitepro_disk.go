@@ -43,3 +43,48 @@ type NeoliteProDiskResourceModel struct {
 	Timeouts          timeouts.Value `tfsdk:"timeouts"`
 }
 
+func NewNeoliteProDiskResource() resource.Resource {
+	return &NeoliteProDiskResource{}
+}
+
+func (r *NeoliteProDiskResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_pro_disk"
+}
+
+func (r *NeoliteProDiskResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Disk tambahan NEO Lite Pro (extra disk, punya account id & product catalog sendiri). Upgrade disk pake `additional_size` (increment).",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Resource id = account_id disk di BiznetGIO.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"order_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Order id dari response create.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"product_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Product id disk dari endpoint `GET /neolite-pros/disks/products`.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+			"cycle": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "Siklus billing: `m` monthly, `a` annual, `q` quarterly, `s` semiannual, `b` biennial, `t` triennial, `p4`, `p5`.",
+				Validators:          []validator.String{enumValidator{vals: []string{"m", "a", "q", "s", "b", "t", "p4", "p5"}}},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"neolite_account_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Account id VM NEO Lite Pro tempat disk dipasang.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+			"service_name": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("service-name"),
+				MarkdownDescription: "Nama layanan disk. Default `service-name`. Panjang 6-16, hanya huruf/angka/titik/dash.",
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(6, 16),
