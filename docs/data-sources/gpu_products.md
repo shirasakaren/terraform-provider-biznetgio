@@ -51,3 +51,4 @@ Read-Only:
 - `name` (String) Flavor name.
 - `raw` (String, Sensitive) Raw JSON of the flavor.
 
+<!-- wip 239 -->
