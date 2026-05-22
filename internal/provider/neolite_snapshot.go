@@ -252,3 +252,4 @@ func (r *NeoliteSnapshotResource) Delete(ctx context.Context, req resource.Delet
 func (r *NeoliteSnapshotResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
+// wip 292
