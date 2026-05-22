@@ -223,4 +223,93 @@ func (r *ObjectStorageResource) Read(ctx context.Context, req resource.ReadReque
 		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read object storage %d: %s", accountID, err))
 		return
-// wip 266
+	}
+
+	if status, _ := objMapString(acc, "status", "state"); status == "Terminated" {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	objSetAccountState(&data, acc)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state ObjectStorageResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	accountID, err := strconv.ParseInt(plan.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Object storage id %q is not numeric", plan.ID.ValueString()))
+		return
+	}
+
+	if !plan.Quota.Equal(state.Quota) {
+		newQuota, oldQuota := plan.Quota.ValueInt64(), state.Quota.ValueInt64()
+		if newQuota < oldQuota {
+			resp.Diagnostics.AddError("Invalid Quota", "Object storage quota hanya bisa diperbesar, bukan diperkecil")
+			return
+		}
+		pay := "no"
+		if plan.PayWithCreditCard.ValueBool() {
+			pay = "yes"
+		}
+		if _, err := r.client.ObjectStorage().QuotaUpgrade(ctx, accountID, biznetgio.ObjectStorageQuotaUpgradeRequest{
+			AddQuota:         newQuota - oldQuota,
+			PayInvoiceWithCC: pay,
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upgrade object storage %d quota: %s", accountID, err))
+			return
+		}
+		acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+			func(ctx context.Context) (map[string]any, error) {
+				return r.client.ObjectStorage().AccountGet(ctx, accountID)
+			},
+			func(m map[string]any) string {
+				v, _ := objMapString(m, "status", "state")
+				return v
+			},
+			[]string{"Active"}, []string{"Terminated", "Suspended", "error"},
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Object Storage Upgrade Failed",
+				fmt.Sprintf("Timed out waiting for object storage %d after quota upgrade: %s", accountID, err))
+			return
+		}
+		objSetAccountState(&plan, acc)
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *ObjectStorageResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data ObjectStorageResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, 10*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Object storage id %q is not numeric", data.ID.ValueString()))
+		return
