@@ -9,3 +9,4 @@ The document generation tool looks for files in the following locations by defau
 * **resources/`full resource name`/resource.tf** example file for the named data source page
 <!-- wip 194 -->
 <!-- wip 299 -->
+<!-- wip 307 -->
