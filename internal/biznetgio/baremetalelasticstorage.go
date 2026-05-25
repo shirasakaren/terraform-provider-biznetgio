@@ -82,3 +82,4 @@ func (s *BaremetalElasticStorageService) AccountID(v map[string]any) (int64, boo
 func (s *BaremetalElasticStorageService) ProductID(v map[string]any) (int64, bool) {
 	return mapInt64(v, "product_id")
 }
+// wip 368
