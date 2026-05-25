@@ -157,4 +157,215 @@ func (r *GpuInstanceResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"status": schema.StringAttribute{
 				Computed:            true,
-// wip 184
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Current status of the instance.",
+			},
+			"order_id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Order id from the creation response.",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Raw JSON of the last read response, for anything not modeled yet.",
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *GpuInstanceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *GpuInstanceResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data GpuInstanceResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	hasSub := !data.Subscription.IsNull() && !data.Subscription.IsUnknown()
+	hasOnDemand := !data.OnDemand.IsNull() && !data.OnDemand.IsUnknown()
+	if hasSub == hasOnDemand {
+		resp.Diagnostics.AddError(
+			"Invalid Billing Mode",
+			"exactly one of `subscription` or `on_demand` must be set on biznetgio_gpu_instance",
+		)
+	}
+}
+
+func (r *GpuInstanceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data GpuInstanceResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	pay := "yes"
+	if !data.PayWithCreditCard.IsNull() && !data.PayWithCreditCard.ValueBool() {
+		pay = "no"
+	}
+
+	var raw map[string]any
+	var err error
+	if !data.Subscription.IsNull() {
+		var sub GpuSubscriptionModel
+		resp.Diagnostics.Append(data.Subscription.As(ctx, &sub, basetypes.ObjectAsOptions{})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		raw, err = r.client.GPU().Create(ctx, biznetgio.GPUCreateRequest{
+			ProductID:         data.ProductID.ValueInt64(),
+			SelectOS:          data.SelectOS.ValueString(),
+			KeypairID:         data.KeypairID.ValueInt64(),
+			ServiceName:       data.ServiceName.ValueString(),
+			SSHAndConsoleUser: data.SSHAndConsoleUser.ValueString(),
+			ConsolePassword:   data.ConsolePassword.ValueString(),
+			Promocode:         data.Promocode.ValueString(),
+			PayInvoiceWithCC:  pay,
+			Cycle:             sub.Cycle.ValueString(),
+		})
+	} else if !data.OnDemand.IsNull() {
+		var od GpuOnDemandModel
+		resp.Diagnostics.Append(data.OnDemand.As(ctx, &od, basetypes.ObjectAsOptions{})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		raw, err = r.client.GPU().CreateOneTime(ctx, biznetgio.GPUOneTimeCreateRequest{
+			ProductID:         data.ProductID.ValueInt64(),
+			SelectOS:          data.SelectOS.ValueString(),
+			KeypairID:         data.KeypairID.ValueInt64(),
+			ServiceName:       data.ServiceName.ValueString(),
+			SSHAndConsoleUser: data.SSHAndConsoleUser.ValueString(),
+			ConsolePassword:   data.ConsolePassword.ValueString(),
+			Promocode:         data.Promocode.ValueString(),
+			PayInvoiceWithCC:  pay,
+			AdditionalHours:   od.AdditionalHours.ValueInt64(),
+		})
+	} else {
+		resp.Diagnostics.AddError("Invalid Billing Mode", "exactly one of `subscription` or `on_demand` must be set on biznetgio_gpu_instance")
+		return
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("unable to create gpu instance: %s", err))
+		return
+	}
+
+	accountID, ok := gpuInt64(raw, "account_id", "id")
+	if !ok {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("gpu create response missing account_id: %v", raw))
+		return
+	}
+	data.ID = types.StringValue(strconv.FormatInt(accountID, 10))
+	if v, ok := gpuString(raw, "order_id"); ok {
+		data.OrderID = types.StringValue(v)
+	}
+
+	final, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) { return r.client.GPU().AccountGet(ctx, accountID) },
+		gpuStatusOf, []string{"active"}, []string{"terminated", "failed", "error", "deleted", "cancelled"},
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("unable to wait for gpu instance %d to become active: %s", accountID, err))
+		return
+	}
+
+	resp.Diagnostics.Append(gpuInstanceSetFromMap(ctx, &data, final)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	data.Raw = types.StringValue(string(redactJSON(final)))
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *GpuInstanceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data GpuInstanceResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("invalid gpu instance id %q: %s", data.ID.ValueString(), err))
+		return
+	}
+
+	items, err := r.client.GPU().AccountsList(ctx, "")
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("unable to list gpu instances: %s", err))
+		return
+	}
+
+	var found map[string]any
+	for _, it := range items {
+		if id, ok := gpuInt64(it, "account_id", "id"); ok && id == accountID {
+			found = it
+			break
+		}
+	}
+	if found == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	resp.Diagnostics.Append(gpuInstanceSetFromMap(ctx, &data, found)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	data.Raw = types.StringValue(string(redactJSON(found)))
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *GpuInstanceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state GpuInstanceResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	accountID, err := strconv.ParseInt(plan.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("invalid gpu instance id %q: %s", plan.ID.ValueString(), err))
+		return
+	}
+
+	rebuild := plan.RebuildTrigger.ValueString()
