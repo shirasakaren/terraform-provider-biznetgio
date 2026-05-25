@@ -6,3 +6,4 @@ output "console_url" {
   value     = data.biznetgio_gpu_console.main.url
   sensitive = true
 }
+# wip 360
