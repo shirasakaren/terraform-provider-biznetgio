@@ -118,4 +118,163 @@ func (r *NeoliteDiskResource) Schema(ctx context.Context, _ resource.SchemaReque
 				MarkdownDescription: "Status disk (Active, Pending, Suspended, Terminated).",
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-// wip 112
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON response disk terakhir dari API, buat akses field yang belum dimodel.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *NeoliteDiskResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *NeoliteDiskResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data NeoliteDiskResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !data.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+	out, err := r.client.Neolite().DiskCreate(ctx, biznetgio.NeoliteDiskCreateRequest{
+		ProductID:        data.ProductID.ValueInt64(),
+		Cycle:            data.Cycle.ValueString(),
+		NeoliteAccountID: data.NeoliteAccountID.ValueInt64(),
+		ServiceName:      data.ServiceName.ValueString(),
+		Promocode:        data.Promocode.ValueString(),
+		PayInvoiceWithCC: cc,
+		Size:             data.Size.ValueInt64(),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create neolite disk: %s", err))
+		return
+	}
+	diskID := aliasInt(out, "account_id", "id")
+	if diskID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create neolite disk response tidak ada account_id: %s", rawJSON(out)))
+		return
+	}
+	data.ID = types.StringValue(fmt.Sprintf("%d", diskID))
+	data.OrderID = types.StringValue(aliasStr(out, "order_id", "orderid"))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	tflog.Info(ctx, "neolite disk created, menunggu active", map[string]any{"disk_account_id": diskID})
+	done, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.Neolite().DiskGet(ctx, diskID)
+		},
+		lowerStatus, []string{"active"}, []string{"suspended", "terminated"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite disk %d gagal jadi active: %s", diskID, err))
+		return
+	}
+	data.Status = types.StringValue(aliasStr(done, "status", "state"))
+	data.Raw = types.StringValue(rawJSON(done))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteDiskResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data NeoliteDiskResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	out, err := r.client.Neolite().DiskGet(ctx, parseAccountID(data.ID.ValueString()))
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read neolite disk %s: %s", data.ID.ValueString(), err))
+		return
+	}
+
+	data.Status = types.StringValue(aliasStr(out, "status", "state"))
+	if v := aliasStr(out, "service_name", "name", "label"); v != "" {
+		data.ServiceName = types.StringValue(v)
+	}
+	if v := aliasInt(out, "size", "disk_size"); v > 0 {
+		data.Size = types.Int64Value(v)
+	}
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteDiskResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state NeoliteDiskResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	diskID := parseAccountID(state.ID.ValueString())
+	newSize := plan.Size.ValueInt64()
+	oldSize := state.Size.ValueInt64()
+	if newSize == oldSize {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		return
+	}
+	if newSize < oldSize {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite disk cuma bisa di-upgrade: %d -> %d", oldSize, newSize))
+		return
+	}
+
+	// upgrade pakai additional_size INCREMENT, bukan target absolute.
+	_, err := r.client.Neolite().DiskUpgrade(ctx, diskID, biznetgio.NeoliteDiskUpgradeRequest{
+		AdditionalSize:   newSize - oldSize,
+		PayInvoiceWithCC: ccYesNo(plan.PayWithCreditCard),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upgrade neolite disk %s: %s", state.ID.ValueString(), err))
+		return
+	}
+	state.Size = plan.Size
+
+	tflog.Info(ctx, "neolite disk upgraded, menunggu active", map[string]any{"disk_account_id": diskID})
+	done, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.Neolite().DiskGet(ctx, diskID)
+		},
