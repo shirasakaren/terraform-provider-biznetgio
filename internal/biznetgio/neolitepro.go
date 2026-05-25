@@ -200,3 +200,4 @@ func (s *NeoliteProService) KeypairCreate(ctx context.Context, req KeypairCreate
 // KeypairCreateRaw create keypair, return raw response map — private_key cuma
 // wip 260
 // wip 319
+// wip 338
