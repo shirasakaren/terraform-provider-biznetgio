@@ -112,3 +112,4 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, con
 		}
 		lastErr = err
 		if !retryable(err) {
+// wip 341
