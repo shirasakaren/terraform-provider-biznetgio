@@ -133,4 +133,92 @@ type Options struct {
 	AllowDowngrade int64  `json:"allow_downgrade"`
 }
 
-// wip 278
+type Billing struct {
+	Label      string      `json:"label"`
+	Cycle      string      `json:"cycle"`
+	Price      int64       `json:"price"`
+	Components []Component `json:"components"` // may be null → tolerate
+}
+
+type Component struct {
+	Label  string  `json:"label"`
+	Field  string  `json:"field"`
+	Prices []Price `json:"prices"`
+}
+
+type Price struct {
+	QtyMin int64 `json:"qty_min"`
+	QtyMax int64 `json:"qty_max"`
+	Price  int64 `json:"price"`
+}
+
+type OsResource struct {
+	VMID   int64  `json:"vmid"`
+	Node   string `json:"node"`
+	Name   string `json:"name"`
+	MaxMem int64  `json:"maxmem"`
+	MaxCPU int64  `json:"maxcpu"`
+}
+
+type IPAvailability struct {
+	Available bool `json:"available"`
+}
+
+type SnapshotAccountResource struct {
+	AccountID    string               `json:"account_id"`
+	Status       string               `json:"status"`
+	ExtraDetails SnapshotExtraDetails `json:"extra_details"`
+}
+
+type SnapshotExtraDetails struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Region      string `json:"region"`
+}
+
+type SnapshotResource struct {
+	ID   string `json:"id"` // = snapshot account_id
+	Name string `json:"name"`
+}
+
+type KeypairCreateRequest struct {
+	Name string `json:"name"`
+}
+
+type KeypairImportRequest struct {
+	Name      string `json:"name"`
+	PublicKey string `json:"public_key,omitempty"`
+}
+
+func mapInt64(v map[string]any, key string) (int64, bool) {
+	x, ok := v[key]
+	if !ok {
+		return 0, false
+	}
+	switch n := x.(type) {
+	case json.Number:
+		i, err := n.Int64()
+		if err != nil {
+			return 0, false
+		}
+		return i, true
+	case float64:
+		return int64(n), true
+	case string:
+		i, err := strconv.ParseInt(n, 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		return i, true
+	}
+	return 0, false
+}
+
+func mapString(v map[string]any, key string) (string, bool) {
+	x, ok := v[key]
+	if !ok {
+		return "", false
+	}
+	s, ok := x.(string)
+	return s, ok
+}
