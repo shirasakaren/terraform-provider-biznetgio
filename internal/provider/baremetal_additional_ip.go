@@ -208,3 +208,45 @@ func (r *BaremetalAdditionalIPResource) Read(ctx context.Context, req resource.R
 		return
 	}
 
+	out, err := r.client.BaremetalAdditionalIP().Get(ctx, accountID)
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read additional ip %d: %s", accountID, err))
+		return
+	}
+
+	data.AccountID = types.Int64Value(accountID)
+	data.Status = types.StringValue(aliasStr(out, "status", "state"))
+	if v := aliasStr(out, "ip", "public_ip", "ip_address", "ipv4"); v != "" {
+		data.IPAddress = types.StringValue(v)
+	}
+	if v := aliasStr(out, "created_at", "date_created"); v != "" {
+		data.CreatedAt = types.StringValue(v)
+	}
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *BaremetalAdditionalIPResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data BaremetalAdditionalIPResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil || accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid additional ip id: %q", data.ID.ValueString()))
+		return
+	}
+	if err := r.client.BaremetalAdditionalIP().Delete(ctx, accountID); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete additional ip %d: %s", accountID, err))
+	}
+}
+
+func (r *BaremetalAdditionalIPResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
