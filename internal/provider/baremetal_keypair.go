@@ -162,4 +162,42 @@ func (r *BaremetalKeypairResource) Read(ctx context.Context, req resource.ReadRe
 		if aliasInt(it, "keypair_id", "id") == keypairID {
 			found = it
 			break
-// wip 207
+		}
+	}
+	if found == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	data.KeypairID = types.Int64Value(keypairID)
+	if v := aliasStr(found, "name"); v != "" {
+		data.Name = types.StringValue(v)
+	}
+	if v := aliasStr(found, "public_key", "publickey"); v != "" {
+		data.PublicKey = types.StringValue(v)
+	}
+	// list gak bawa private key — keep value lama
+	data.Raw = types.StringValue(rawJSON(found))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *BaremetalKeypairResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data BaremetalKeypairResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	keypairID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil || keypairID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid keypair id: %q", data.ID.ValueString()))
+		return
+	}
+	if err := r.client.Baremetal().KeypairDelete(ctx, keypairID); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete baremetal keypair %d: %s", keypairID, err))
+	}
+}
+
+func (r *BaremetalKeypairResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
