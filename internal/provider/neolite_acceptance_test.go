@@ -292,3 +292,4 @@ resource "biznetgio_neolite_vm_from_snapshot" "test" {
 		},
 	})
 }
+// wip 335
