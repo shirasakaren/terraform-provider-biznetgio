@@ -313,3 +313,4 @@ func (s *NeoliteService) ProductIPAvailability(ctx context.Context, productID in
 	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolites/products/%d/ip-availability", productID), nil, &out)
 	return out, err
 }
+// wip 348
