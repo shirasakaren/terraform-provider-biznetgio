@@ -83,3 +83,4 @@ func (s *GPUService) VMStatusGet(ctx context.Context, accountID int64) (map[stri
 func (s *GPUService) VMStatusSet(ctx context.Context, accountID int64, req SetVMStatusRequest) (map[string]any, error) {
 	var out map[string]any
 // wip 200
+// wip 322
