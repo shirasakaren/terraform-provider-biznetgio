@@ -104,3 +104,109 @@ func (r *GpuInstanceResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				MarkdownDescription: "Display name of the instance. Create-only, changing it replaces the instance.",
+			},
+			"ssh_and_console_user": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "SSH and console user for the instance.",
+			},
+			"console_password": schema.StringAttribute{
+				Required:            true,
+				Sensitive:           true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				MarkdownDescription: "Console password. Create-only, changing it replaces the instance.",
+			},
+			"promocode": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Promo code to apply at creation.",
+			},
+			"pay_with_credit_card": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(true),
+				MarkdownDescription: "Pay the invoice with the registered credit card. Defaults to true. Set false to leave the invoice unpaid in the portal; the resource stays Pending until paid.",
+			},
+			"subscription": schema.SingleNestedAttribute{
+				Optional:            true,
+				MarkdownDescription: "Subscription billing mode (cycle-based). Exactly one of `subscription` or `on_demand` must be set.",
+				Attributes: map[string]schema.Attribute{
+					"cycle": schema.StringAttribute{
+						Required:            true,
+						MarkdownDescription: "Billing cycle, e.g. `m` for monthly or `a` for annual.",
+					},
+				},
+			},
+			"on_demand": schema.SingleNestedAttribute{
+				Optional:            true,
+				MarkdownDescription: "On-demand billing mode (hourly). Exactly one of `subscription` or `on_demand` must be set.",
+				Attributes: map[string]schema.Attribute{
+					"additional_hours": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Default:             int64default.StaticInt64(0),
+						MarkdownDescription: "Additional hours to reserve. Defaults to 0.",
+					},
+				},
+			},
+			"rebuild_trigger": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Change this value to rebuild the instance (destructive, reinstalls the OS).",
+			},
+			"reserve_additional_hours_trigger": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Change this value to reserve 1 additional hour on an on-demand instance.",
+			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Current status of the instance.",
+			},
+			"order_id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Order id from the creation response.",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Raw JSON of the last read response, for anything not modeled yet.",
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *GpuInstanceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *GpuInstanceResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data GpuInstanceResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	hasSub := !data.Subscription.IsNull() && !data.Subscription.IsUnknown()
+	hasOnDemand := !data.OnDemand.IsNull() && !data.OnDemand.IsUnknown()
+	if hasSub == hasOnDemand {
+		resp.Diagnostics.AddError(
+			"Invalid Billing Mode",
+			"exactly one of `subscription` or `on_demand` must be set on biznetgio_gpu_instance",
+		)
+	}
+}
