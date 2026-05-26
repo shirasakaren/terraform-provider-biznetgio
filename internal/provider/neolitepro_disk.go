@@ -88,3 +88,225 @@ func (r *NeoliteProDiskResource) Schema(ctx context.Context, _ resource.SchemaRe
 				MarkdownDescription: "Nama layanan disk. Default `service-name`. Panjang 6-16, hanya huruf/angka/titik/dash.",
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(6, 16),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9\-\.]*$`), "hanya huruf, angka, titik, atau dash"),
+				},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"promocode": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString(""),
+				MarkdownDescription: "Kode promo saat order.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"pay_with_credit_card": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(true),
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar. Bisa diubah in-place saat upgrade disk.",
+			},
+			"size": schema.Int64Attribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             int64default.StaticInt64(30),
+				MarkdownDescription: "Ukuran disk (GB). Default 30, minimal 30 (minimal product disk pro). Cuma bisa naik, bukan turun.",
+				Validators:          []validator.Int64{int64validator.AtLeast(30)},
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Status disk (Active, Pending, Suspended, Terminated).",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON response disk terakhir dari API, buat akses field yang belum dimodel.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *NeoliteProDiskResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *NeoliteProDiskResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data NeoliteProDiskResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	out, err := r.client.NeolitePro().DiskCreate(ctx, biznetgio.NeoliteDiskCreateRequest{
+		ProductID:        data.ProductID.ValueInt64(),
+		Cycle:            data.Cycle.ValueString(),
+		NeoliteAccountID: data.NeoliteAccountID.ValueInt64(),
+		ServiceName:      data.ServiceName.ValueString(),
+		Promocode:        data.Promocode.ValueString(),
+		PayInvoiceWithCC: ccYesNo(data.PayWithCreditCard),
+		Size:             data.Size.ValueInt64(),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create neolite pro disk: %s", err))
+		return
+	}
+	diskID := aliasInt(out, "account_id", "id")
+	if diskID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create neolite pro disk response tidak ada account_id: %s", rawJSON(out)))
+		return
+	}
+	data.ID = types.StringValue(fmt.Sprintf("%d", diskID))
+	data.OrderID = types.StringValue(aliasStr(out, "order_id", "orderid"))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	tflog.Info(ctx, "neolite pro disk created, menunggu active", map[string]any{"disk_account_id": diskID})
+	done, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.NeolitePro().DiskGet(ctx, diskID)
+		},
+		lowerStatus, []string{"active"}, []string{"suspended", "terminated"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro disk %d gagal jadi active: %s", diskID, err))
+		return
+	}
+	data.Status = types.StringValue(aliasStr(done, "status", "state"))
+	data.Raw = types.StringValue(rawJSON(done))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteProDiskResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data NeoliteProDiskResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	out, err := r.client.NeolitePro().DiskGet(ctx, parseAccountID(data.ID.ValueString()))
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read neolite pro disk %s: %s", data.ID.ValueString(), err))
+		return
+	}
+
+	data.Status = types.StringValue(aliasStr(out, "status", "state"))
+	if v := aliasStr(out, "service_name", "name", "label"); v != "" {
+		data.ServiceName = types.StringValue(v)
+	}
+	if v := aliasInt(out, "size", "disk_size"); v > 0 {
+		data.Size = types.Int64Value(v)
+	}
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteProDiskResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state NeoliteProDiskResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	diskID := parseAccountID(state.ID.ValueString())
+	newSize := plan.Size.ValueInt64()
+	oldSize := state.Size.ValueInt64()
+	if newSize == oldSize {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		return
+	}
+	if newSize < oldSize {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro disk cuma bisa di-upgrade: %d -> %d", oldSize, newSize))
+		return
+	}
+
+	// upgrade pakai additional_size INCREMENT, bukan target absolute.
+	_, err := r.client.NeolitePro().DiskUpgrade(ctx, diskID, biznetgio.NeoliteDiskUpgradeRequest{
+		AdditionalSize:   newSize - oldSize,
+		PayInvoiceWithCC: ccYesNo(plan.PayWithCreditCard),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upgrade neolite pro disk %s: %s", state.ID.ValueString(), err))
+		return
+	}
+	state.Size = plan.Size
+
+	tflog.Info(ctx, "neolite pro disk upgraded, menunggu active", map[string]any{"disk_account_id": diskID})
+	done, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.NeolitePro().DiskGet(ctx, diskID)
+		},
+		lowerStatus, []string{"active"}, []string{"suspended", "terminated"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro disk %s gagal balik active: %s", state.ID.ValueString(), err))
+		return
+	}
+	state.Status = types.StringValue(aliasStr(done, "status", "state"))
+	state.Raw = types.StringValue(rawJSON(done))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *NeoliteProDiskResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data NeoliteProDiskResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, 10*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	err := r.client.NeolitePro().DiskDelete(ctx, parseAccountID(data.ID.ValueString()))
+	if err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete neolite pro disk %s: %s", data.ID.ValueString(), err))
+		return
+	}
+}
+
+func (r *NeoliteProDiskResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
