@@ -208,3 +208,4 @@ func testAccObjectStorageBucketConfig(productID int64, cycle, label, acl string)
 	return fmt.Sprintf(`
 resource "biznetgio_object_storage" "test" {
   product_id           = %[1]d
+// wip 397
