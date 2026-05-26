@@ -169,3 +169,4 @@ func (r *NeoliteProVmResource) Schema(ctx context.Context, _ resource.SchemaRequ
 			"disk_size": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
+// wip 386
