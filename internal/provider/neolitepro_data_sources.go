@@ -47,3 +47,101 @@ func (d *NeoliteProProductsDataSource) Schema(_ context.Context, _ datasource.Sc
 						"description":   schema.StringAttribute{Computed: true, MarkdownDescription: "Deskripsi product."},
 						"category_id":   schema.Int64Attribute{Computed: true, MarkdownDescription: "Id kategori."},
 						"category_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Nama kategori."},
+						"options": schema.SingleNestedAttribute{
+							Computed:            true,
+							MarkdownDescription: "Opsi product.",
+							Attributes: map[string]schema.Attribute{
+								"type":            schema.StringAttribute{Computed: true, MarkdownDescription: "Tipe option."},
+								"cores":           schema.Int64Attribute{Computed: true, MarkdownDescription: "Jumlah core."},
+								"memory":          schema.Int64Attribute{Computed: true, MarkdownDescription: "Memory (MB)."},
+								"allow_downgrade": schema.Int64Attribute{Computed: true, MarkdownDescription: "1 kalau downgrade dibolehin."},
+							},
+						},
+						"billing": schema.ListNestedAttribute{
+							Computed:            true,
+							MarkdownDescription: "Daftar harga billing.",
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"label": schema.StringAttribute{Computed: true, MarkdownDescription: "Label billing."},
+									"cycle": schema.StringAttribute{Computed: true, MarkdownDescription: "Siklus billing."},
+									"price": schema.Int64Attribute{Computed: true, MarkdownDescription: "Harga."},
+									"components": schema.ListNestedAttribute{
+										Computed:            true,
+										MarkdownDescription: "Komponen harga.",
+										NestedObject: schema.NestedAttributeObject{
+											Attributes: map[string]schema.Attribute{
+												"label": schema.StringAttribute{Computed: true, MarkdownDescription: "Label komponen."},
+												"field": schema.StringAttribute{Computed: true, MarkdownDescription: "Field komponen."},
+												"prices": schema.ListNestedAttribute{
+													Computed:            true,
+													MarkdownDescription: "Tier harga per kuantitas.",
+													NestedObject: schema.NestedAttributeObject{
+														Attributes: map[string]schema.Attribute{
+															"qty_min": schema.Int64Attribute{Computed: true, MarkdownDescription: "Kuantitas minimal."},
+															"qty_max": schema.Int64Attribute{Computed: true, MarkdownDescription: "Kuantitas maksimal."},
+															"price":   schema.Int64Attribute{Computed: true, MarkdownDescription: "Harga tier."},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (d *NeoliteProProductsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	d.client = client
+}
+
+func (d *NeoliteProProductsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data NeoliteProProductsDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	plans, err := d.client.NeolitePro().ProductList(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list neolite pro products: %s", err))
+		return
+	}
+
+	data.ID = types.StringValue("neolite-pro-products")
+	for _, p := range plans {
+		model := NeoliteProductModel{
+			ProductID:    types.Int64Value(p.ProductID),
+			Name:         types.StringValue(p.Name),
+			Description:  types.StringValue(p.Description),
+			CategoryID:   types.Int64Value(p.CategoryID),
+			CategoryName: types.StringValue(p.CategoryName),
+			Options: NeoliteProductOptionsModel{
+				Type:           types.StringValue(p.Options.Type),
+				Cores:          types.Int64Value(p.Options.Cores),
+				Memory:         types.Int64Value(p.Options.Memory),
+				AllowDowngrade: types.Int64Value(p.Options.AllowDowngrade),
+			},
+		}
+		for _, b := range p.Billing {
+			bm := NeoliteProductBillingModel{
+				Label: types.StringValue(b.Label),
+				Cycle: types.StringValue(b.Cycle),
+				Price: types.Int64Value(b.Price),
+			}
