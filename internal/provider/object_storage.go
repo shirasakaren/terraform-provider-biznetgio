@@ -313,3 +313,4 @@ func (r *ObjectStorageResource) Delete(ctx context.Context, req resource.DeleteR
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Object storage id %q is not numeric", data.ID.ValueString()))
 		return
+// wip 400
