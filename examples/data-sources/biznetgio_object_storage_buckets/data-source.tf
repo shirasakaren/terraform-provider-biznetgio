@@ -1,5 +1,7 @@
-# wip 0
-# wip 95
-# wip 160
-# wip 163
-# wip 238
+data "biznetgio_object_storage_buckets" "example" {
+  account_id = biznetgio_object_storage.example.id
+}
+
+output "names" {
+  value = [for b in data.biznetgio_object_storage_buckets.example.buckets : b.name]
+}
