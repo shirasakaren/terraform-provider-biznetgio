@@ -84,3 +84,46 @@ func (r *NeoliteProKeypairResource) Configure(_ context.Context, req resource.Co
 	r.client = client
 }
 
+func (r *NeoliteProKeypairResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data NeoliteProKeypairResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// pake raw response: field private key undocumented, aliasnya bisa beda-beda.
+	raw, err := r.client.NeolitePro().KeypairCreateRaw(ctx, biznetgio.KeypairCreateRequest{Name: data.Name.ValueString()})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create neolite pro keypair: %s", err))
+		return
+	}
+
+	keypairID := aliasInt(raw, "keypair_id", "neosshkey_id", "id")
+	if keypairID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create neolite pro keypair response tidak ada keypair_id: %s", rawJSON(raw)))
+		return
+	}
+	data.ID = types.StringValue(strconv.FormatInt(keypairID, 10))
+	data.KeypairID = types.Int64Value(keypairID)
+	data.PublicKey = types.StringValue(aliasStr(raw, "public_key", "pubkey"))
+	data.PrivateKey = types.StringValue(aliasStr(raw, "private_key", "private", "secret_key", "pem"))
+	if data.PrivateKey.ValueString() == "" {
+		resp.Diagnostics.AddWarning("Private key tidak ditemukan",
+			fmt.Sprintf("Response create ga memuat private key (field undocumented), coba cek: %s", rawJSON(raw)))
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteProKeypairResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data NeoliteProKeypairResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	list, err := r.client.NeolitePro().KeypairList(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list neolite pro keypairs: %s", err))
+		return
+	}
