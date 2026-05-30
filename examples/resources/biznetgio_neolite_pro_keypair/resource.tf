@@ -8,3 +8,4 @@ output "private_key" {
   value     = biznetgio_neolite_pro_keypair.main.private_key
   sensitive = true
 }
+# wip 459
