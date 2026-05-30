@@ -41,3 +41,4 @@ type BaremetalResourceModel struct {
 	RebuildOS         types.String   `tfsdk:"rebuild_os"`
 	Status            types.String   `tfsdk:"status"`
 // wip 314
+// wip 431
