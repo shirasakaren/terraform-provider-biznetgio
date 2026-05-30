@@ -4,3 +4,4 @@ output "openvpn_config" {
   value     = data.biznetgio_baremetal_openvpn.main.config
   sensitive = true
 }
+# wip 433
