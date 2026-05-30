@@ -4,3 +4,4 @@ resource "biznetgio_object_storage_credential" "example" {
   active     = true
 }
 # wip 188
+# wip 437
