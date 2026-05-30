@@ -17,3 +17,4 @@ resource "biznetgio_gpu_instance" "example" {
   rebuild_trigger                  = "init"
   reserve_additional_hours_trigger = ""
 }
+# wip 435
