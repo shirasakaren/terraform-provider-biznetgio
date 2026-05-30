@@ -1,5 +1,6 @@
-# wip 0
-# wip 214
-# wip 224
-# wip 361
-# wip 385
+data "biznetgio_baremetal_openvpn" "main" {}
+
+output "openvpn_config" {
+  value     = data.biznetgio_baremetal_openvpn.main.config
+  sensitive = true
+}
