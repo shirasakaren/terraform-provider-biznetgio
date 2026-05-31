@@ -210,3 +210,4 @@ func (r *GpuInstanceResource) ValidateConfig(ctx context.Context, req resource.V
 		)
 	}
 }
+// wip 471
