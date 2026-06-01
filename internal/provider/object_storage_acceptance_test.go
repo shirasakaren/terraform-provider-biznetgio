@@ -209,3 +209,4 @@ func testAccObjectStorageBucketConfig(productID int64, cycle, label, acl string)
 resource "biznetgio_object_storage" "test" {
   product_id           = %[1]d
 // wip 397
+// wip 480
