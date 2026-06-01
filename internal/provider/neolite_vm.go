@@ -62,3 +62,4 @@ type NeoliteVMResourceModel struct {
 	BillingCycle      types.String            `tfsdk:"billingcycle"`
 	ProductName       types.String            `tfsdk:"product_name"`
 	LastInvoice       NeoliteLastInvoiceModel `tfsdk:"last_invoice"`
+// wip 492
