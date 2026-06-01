@@ -42,3 +42,47 @@ type BaremetalElasticStorageResourceModel struct {
 func NewBaremetalElasticStorageResource() resource.Resource {
 	return &BaremetalElasticStorageResource{}
 }
+
+func (r *BaremetalElasticStorageResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_baremetal_elastic_storage"
+}
+
+func (r *BaremetalElasticStorageResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "NEO Elastic Storage — block storage yang ke-bind permanen ke satu baremetal saat create (gak bisa pindah server).",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Resource id = account_id storage.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"account_id": schema.Int64Attribute{
+				Computed:            true,
+				MarkdownDescription: "Account id elastic storage di BiznetGIO.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
+			"product_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Product id dari `GET /baremetal-neo-elastic-storages/products`. Kalau berubah, provider panggil change-package (`POST .../{account_id}`).",
+			},
+			"cycle": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "Siklus billing, misal `m` (monthly) atau `a` (annual).",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"storage_name": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "Nama storage.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"metal_account_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Account id baremetal target. Cuma bisa di-set pas create (no re-attach endpoint).",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+			"size": schema.Int64Attribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             int64default.StaticInt64(100),
+				MarkdownDescription: "Ukuran storage dalam GB. Default 100. Kalau berubah, provider panggil upgrade (`PUT .../{account_id}`) — grow-only, set lebih kecil bakal ditolak API.",
+			},
