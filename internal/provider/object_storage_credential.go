@@ -39,3 +39,4 @@ func NewObjectStorageCredentialResource() resource.Resource {
 
 func (r *ObjectStorageCredentialResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "biznetgio_object_storage_credential"
+// wip 475
