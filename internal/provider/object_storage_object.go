@@ -118,3 +118,43 @@ func (r *ObjectStorageObjectResource) Configure(ctx context.Context, req resourc
 	r.client = client
 }
 
+func (r *ObjectStorageObjectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data ObjectStorageObjectResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := objParseAccountID(data.AccountID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid account_id", err.Error())
+		return
+	}
+
+	content, err := objObjectBytes(data.Source.ValueString(), data.Content.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid Object Source", err.Error())
+		return
+	}
+
+	directory, filename := objSplitKey(data.Key.ValueString())
+	if _, err := r.client.ObjectStorage().ObjectUpload(ctx, accountID, data.Bucket.ValueString(), directory, filename, content); err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upload object %q: %s", data.Key.ValueString(), err))
+		return
+	}
+
+	data.ID = types.StringValue(data.AccountID.ValueString() + ":" + data.Bucket.ValueString() + ":" + data.Key.ValueString())
+	if data.ACL.ValueString() != "" {
+		if _, err := r.client.ObjectStorage().ObjectSetACL(ctx, accountID, data.Bucket.ValueString(), data.Key.ValueString(), biznetgio.SetACLRequest{
+			ACL: data.ACL.ValueString(),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set ACL on object %q: %s", data.Key.ValueString(), err))
+			return
+		}
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageObjectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data ObjectStorageObjectResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
