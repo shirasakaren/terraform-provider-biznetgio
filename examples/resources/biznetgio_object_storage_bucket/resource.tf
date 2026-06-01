@@ -1,2 +1,5 @@
-# wip 0
-# wip 165
+resource "biznetgio_object_storage_bucket" "example" {
+  account_id = biznetgio_object_storage.example.id
+  name       = "my-app-assets"
+  acl        = "private"
+}
