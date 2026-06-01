@@ -39,4 +39,249 @@ func NewObjectStorageCredentialResource() resource.Resource {
 
 func (r *ObjectStorageCredentialResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "biznetgio_object_storage_credential"
-// wip 475
+}
+
+func (r *ObjectStorageCredentialResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "S3 credential (access/secret key pair) for an Object Storage instance. " +
+			"The secret key is shown only once at create time and cannot be re-fetched. " +
+			"Import with `terraform import biznetgio_object_storage_credential.example <account_id>:<access_key>`; " +
+			"the id is then normalized to the hashed form `<account_id>:<sha256(access_key)[:16]>`.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Composite id `<account_id>:<sha256 hex dari access key, 16 char pertama>` — access key plaintext ga pernah masuk id.",
+			},
+			"account_id": schema.StringAttribute{
+				Required:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				MarkdownDescription: "Object Storage instance account id.",
+			},
+			"access_key": schema.StringAttribute{
+				Computed:            true,
+				Sensitive:           true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Credential access key, returned once at create.",
+			},
+			"secret_key": schema.StringAttribute{
+				Computed:            true,
+				Sensitive:           true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Credential secret key, shown only once at create; keeps its last state value on refresh.",
+			},
+			"active": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(true),
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Whether the credential is enabled. Set false to disable without deleting.",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Full JSON of the last read from the API, for anything not modeled yet.",
+			},
+		},
+	}
+}
+
+func (r *ObjectStorageCredentialResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData))
+		return
+	}
+	r.client = client
+}
+
+func (r *ObjectStorageCredentialResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data ObjectStorageCredentialResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := objParseAccountID(data.AccountID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid account_id", err.Error())
+		return
+	}
+
+	created, err := r.client.ObjectStorage().CredentialCreate(ctx, accountID)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create credential: %s", err))
+		return
+	}
+
+	accessKey, ok := objMapString(created, "accessKey", "access_key", "accesskey")
+	if !ok {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Credential create response missing access key: %s", objRawString(created)))
+		return
+	}
+	if secret, ok := objMapString(created, "secretKey", "secret_key", "secretkey"); ok {
+		data.SecretKey = types.StringValue(secret)
+	}
+	if v, ok := objMapBool(created, "active"); ok {
+		data.Active = types.BoolValue(v)
+	}
+
+	data.AccessKey = types.StringValue(accessKey)
+	data.ID = types.StringValue(data.AccountID.ValueString() + ":" + objHashKey(accessKey))
+	data.Raw = objRawString(created)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageCredentialResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data ObjectStorageCredentialResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, keyForm, err := objParseCredentialID(data.ID.ValueString(), data.AccountID.ValueString(), data.AccessKey.ValueString())
+	if err != nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	item, ok, err := objFindCredential(ctx, r.client, accountID, keyForm)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list credentials: %s", err))
+		return
+	}
+	if !ok {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	accessKey, ok := objMapString(item, "accessKey", "access_key", "accesskey")
+	if !ok {
+		resp.Diagnostics.AddError("Client Error", "Credential item missing access key")
+		return
+	}
+	data.AccessKey = types.StringValue(accessKey)
+	data.ID = types.StringValue(data.AccountID.ValueString() + ":" + objHashKey(accessKey))
+	if v, ok := objMapString(item, "secretKey", "secret_key", "secretkey"); ok {
+		data.SecretKey = types.StringValue(v)
+	}
+	if v, ok := objMapBool(item, "active"); ok {
+		data.Active = types.BoolValue(v)
+	}
+	data.Raw = objRawString(item)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageCredentialResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state ObjectStorageCredentialResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := objParseAccountID(plan.AccountID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid account_id", err.Error())
+		return
+	}
+	accessKey := plan.AccessKey.ValueString()
+	if accessKey == "" {
+		accessKey = state.AccessKey.ValueString()
+	}
+	if accessKey == "" {
+		resp.Diagnostics.AddError("Missing access_key", "Access key tidak ada di state, tidak bisa update credential")
+		return
+	}
+
+	if !plan.Active.Equal(state.Active) {
+		if _, err := r.client.ObjectStorage().CredentialUpdate(ctx, accountID, accessKey, biznetgio.CredentialStatusRequest{
+			Active: plan.Active.ValueBool(),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update credential %q: %s", accessKey, err))
+			return
+		}
+	}
+
+	// secret_key tetap dari state lama, biar gak hilang
+	plan.SecretKey = state.SecretKey
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *ObjectStorageCredentialResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data ObjectStorageCredentialResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, keyForm, err := objParseCredentialID(data.ID.ValueString(), data.AccountID.ValueString(), data.AccessKey.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid credential", err.Error())
+		return
+	}
+
+	accessKey, ok, err := objResolveAccessKey(ctx, r.client, accountID, keyForm, data.AccessKey.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list credentials: %s", err))
+		return
+	}
+	if !ok {
+		resp.Diagnostics.AddError("Invalid credential", "Access key tidak ketemu dari id atau state")
+		return
+	}
+
+	if err := r.client.ObjectStorage().CredentialDelete(ctx, accountID, accessKey); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete credential %q: %s", accessKey, err))
+	}
+}
+
+func (r *ObjectStorageCredentialResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	accountID, accessKey, ok := strings.Cut(req.ID, ":")
+	if !ok || accountID == "" || accessKey == "" {
+		resp.Diagnostics.AddError("Invalid Import ID", "Expected `<account_id>:<access_key>`")
+		return
+	}
+	resp.State.SetAttribute(ctx, path.Root("account_id"), accountID)
+	resp.State.SetAttribute(ctx, path.Root("access_key"), accessKey)
+}
+
+func objFindCredential(ctx context.Context, c *biznetgio.Client, accountID int64, keyForm string) (map[string]any, bool, error) {
+	items, err := c.ObjectStorage().CredentialsList(ctx, accountID)
+	if err != nil {
+		return nil, false, err
+	}
+	hashMode := objIsHex16(keyForm)
+	for _, it := range items {
+		ak, ok := objMapString(it, "accessKey", "access_key", "accesskey")
+		if !ok {
+			continue
+		}
+		if (hashMode && objHashKey(ak) == keyForm) || (!hashMode && ak == keyForm) {
+			return it, true, nil
+		}
+	}
+	return nil, false, nil
+}
+
+// objHashKey sha256 hex access key, ambil 16 char pertama — identitas tanpa plaintext.
+func objHashKey(accessKey string) string {
+	sum := sha256.Sum256([]byte(accessKey))
+	return hex.EncodeToString(sum[:8])
+}
+
+// objIsHex16 cek format suffix id: 16 char lowercase hex (hash) vs literal access key.
+func objIsHex16(s string) bool {
+	if len(s) != 16 {
+		return false
+	}
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
