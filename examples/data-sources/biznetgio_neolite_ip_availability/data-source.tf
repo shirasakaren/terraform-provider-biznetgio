@@ -7,3 +7,4 @@ data "biznetgio_neolite_ip_availability" "this" {
 output "available" {
   value = data.biznetgio_neolite_ip_availability.this.available
 }
+# wip 511
