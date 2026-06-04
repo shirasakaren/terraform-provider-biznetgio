@@ -47,3 +47,4 @@ Read-Only:
 - `node` (String) Node Proxmox.
 - `vmid` (Number) Id OS template.
 
+<!-- wip 506 -->
