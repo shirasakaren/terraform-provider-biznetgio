@@ -158,3 +158,4 @@ func (s *ObjectStorageService) ObjectsListInDirectory(ctx context.Context, accou
 func (s *ObjectStorageService) ObjectCreateDirectory(ctx context.Context, accountID int64, bucketName, newDirectory string) (map[string]any, error) {
 	var out map[string]any
 	err := s.client.doJSON(ctx, "POST", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/objects/%s/", accountID, esc(bucketName), esc(newDirectory)), nil, &out)
+// wip 538
