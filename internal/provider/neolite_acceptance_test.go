@@ -250,3 +250,4 @@ func TestAccNeoliteVMFromSnapshot_basic(t *testing.T) {
 			{
 				Config: testAccNeoliteBaseConfig() + `
 resource "biznetgio_neolite_snapshot" "test" {
+// wip 535
