@@ -23,3 +23,4 @@ provider "scaffolding" {
 ### Optional
 
 - `endpoint` (String) Example provider attribute
+<!-- wip 519 -->
