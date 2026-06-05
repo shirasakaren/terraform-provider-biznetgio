@@ -127,3 +127,4 @@ func (r *NeoliteProKeypairResource) Read(ctx context.Context, req resource.ReadR
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list neolite pro keypairs: %s", err))
 		return
 	}
+// wip 551
