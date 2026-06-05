@@ -51,3 +51,4 @@ type NeoliteProductComponentModel struct {
 	Prices []NeoliteProductPriceModel `tfsdk:"prices"`
 }
 
+// wip 561
