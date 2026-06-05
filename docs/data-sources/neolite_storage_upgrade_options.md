@@ -36,3 +36,4 @@ output "options_raw" {
 - `raw` (String, Sensitive) Full JSON response opsi upgrade storage.
 
 
+
