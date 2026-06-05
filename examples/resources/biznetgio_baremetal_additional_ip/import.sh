@@ -1,3 +1,1 @@
-// wip 0
-// wip 298
-// wip 452
+terraform import biznetgio_baremetal_additional_ip.main <account_id>
