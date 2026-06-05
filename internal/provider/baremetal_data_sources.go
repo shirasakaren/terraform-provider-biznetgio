@@ -170,4 +170,46 @@ func (d *BaremetalRebuildOSListDataSource) Read(ctx context.Context, req datasou
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list rebuild oss: %s", err))
 		return
-// wip 489
+	}
+
+	var oss []string
+	for _, it := range items {
+		// item bisa object {name: "..."} atau map lain — ambil defensif
+		if v := aliasStr(it, "name", "os", "label", "value"); v != "" {
+			oss = append(oss, v)
+		}
+	}
+	listValue, diags := types.ListValueFrom(ctx, types.StringType, oss)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	data.OSS = listValue
+	data.Raw = types.StringValue(rawJSON(map[string]any{"oss": items}))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- openvpn ----------
+
+type BaremetalOpenVPNDataSource struct {
+	client *biznetgio.Client
+}
+
+type BaremetalOpenVPNDataSourceModel struct {
+	Config types.String `tfsdk:"config"`
+	Raw    types.String `tfsdk:"raw"`
+}
+
+func NewBaremetalOpenVPNDataSource() datasource.DataSource {
+	return &BaremetalOpenVPNDataSource{}
+}
+
+func (d *BaremetalOpenVPNDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_baremetal_openvpn"
+}
+
+func (d *BaremetalOpenVPNDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Konfigurasi OpenVPN akses OOB ke bare-metal (`GET /baremetals/openvpn`, scope seluruh customer).",
+		Attributes: map[string]schema.Attribute{
