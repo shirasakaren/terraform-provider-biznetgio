@@ -210,3 +210,4 @@ resource "biznetgio_object_storage" "test" {
   product_id           = %[1]d
 // wip 397
 // wip 480
+// wip 572
