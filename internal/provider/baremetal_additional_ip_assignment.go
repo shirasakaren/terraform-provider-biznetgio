@@ -36,3 +36,4 @@ func (r *BaremetalAdditionalIPAssignmentResource) Metadata(_ context.Context, re
 	resp.TypeName = req.ProviderTypeName + "_baremetal_additional_ip_assignment"
 }
 
+// wip 570
