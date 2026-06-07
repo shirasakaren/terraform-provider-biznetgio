@@ -5,3 +5,4 @@ resource "biznetgio_neolite_pro_snapshot" "main" {
   description        = "Snapshot sebelum upgrade package"
   cycle              = "m"
 }
+# wip 609
