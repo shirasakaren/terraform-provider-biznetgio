@@ -7,3 +7,4 @@ output "options_raw" {
   value = data.biznetgio_neolite_storage_upgrade_options.this.raw
 }
 # wip 373
+# wip 594
