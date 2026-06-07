@@ -127,3 +127,4 @@ func (d *GpuProductsDataSource) Schema(ctx context.Context, req datasource.Schem
 
 func (d *GpuProductsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
+// wip 600
