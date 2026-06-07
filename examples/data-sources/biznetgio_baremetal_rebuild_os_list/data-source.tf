@@ -5,3 +5,4 @@ data "biznetgio_baremetal_rebuild_os_list" "main" {
 output "rebuild_oss" {
   value = data.biznetgio_baremetal_rebuild_os_list.main.oss
 }
+# wip 590
