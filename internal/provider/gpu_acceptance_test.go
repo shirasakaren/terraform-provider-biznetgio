@@ -88,3 +88,47 @@ resource "biznetgio_gpu_instance" "test" {
     cycle = "m"
   }
 }
+`, os.Getenv("BIZNETGIO_TEST_GPU_PRODUCT_ID"), os.Getenv("BIZNETGIO_TEST_GPU_OS"), os.Getenv("BIZNETGIO_TEST_GPU_KEYPAIR_ID"), name)
+}
+
+func testAccGpuInstanceOnDemandConfig(name string) string {
+	return fmt.Sprintf(`
+provider "biznetgio" {}
+
+resource "biznetgio_gpu_instance" "test" {
+  product_id           = %s
+  select_os            = %q
+  keypair_id           = %s
+  service_name         = %q
+  ssh_and_console_user = "root"
+  console_password     = "AccTestPass123!"
+
+  on_demand {
+    additional_hours = 1
+  }
+}
+`, os.Getenv("BIZNETGIO_TEST_GPU_PRODUCT_ID"), os.Getenv("BIZNETGIO_TEST_GPU_OS"), os.Getenv("BIZNETGIO_TEST_GPU_KEYPAIR_ID"), name)
+}
+
+func testAccCheckGpuInstanceDestroy(s *terraform.State) error {
+	c := biznetgio.New(os.Getenv("BIZNETGIO_BASE_URL"), os.Getenv("BIZNETGIO_API_KEY"), 30*time.Second)
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "biznetgio_gpu_instance" {
+			continue
+		}
+		accountID, err := strconv.ParseInt(rs.Primary.ID, 10, 64)
+		if err != nil {
+			return err
+		}
+		items, err := c.GPU().AccountsList(context.Background(), "")
+		if err != nil {
+			return err
+		}
+		for _, it := range items {
+			if id, ok := gpuInt64(it, "account_id", "id"); ok && id == accountID {
+				return fmt.Errorf("gpu instance %d masih ada", accountID)
+			}
+		}
+	}
+	return nil
+}
