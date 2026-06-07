@@ -37,3 +37,4 @@ func (r *BaremetalAdditionalIPAssignmentResource) Metadata(_ context.Context, re
 }
 
 // wip 570
+// wip 605
