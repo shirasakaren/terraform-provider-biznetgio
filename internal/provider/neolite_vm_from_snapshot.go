@@ -266,3 +266,4 @@ func (r *NeoliteVMFromSnapshotResource) ImportState(ctx context.Context, req res
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 // wip 442
+// wip 643
