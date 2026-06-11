@@ -30,3 +30,4 @@ resource "biznetgio_neolite_vm_from_snapshot" "restored" {
   ssh_and_console_user = "admin"
   console_password     = "s3cretP4ssw0rd"
 }
+# wip 657
