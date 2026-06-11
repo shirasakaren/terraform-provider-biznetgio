@@ -132,3 +132,4 @@ func testAccCheckGpuInstanceDestroy(s *terraform.State) error {
 	}
 	return nil
 }
+// wip 635
