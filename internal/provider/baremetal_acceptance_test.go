@@ -68,3 +68,73 @@ func TestAccBaremetal_basic(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck:                 func() { testAccPreCheck(t) },
 		CheckDestroy:             testAccCheckBaremetalDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccBaremetalConfig("tf-acc-baremetal"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal.test", "account_id"),
+					resource.TestCheckResourceAttr("biznetgio_baremetal.test", "label", "tf-acc-baremetal"),
+					resource.TestCheckResourceAttr("biznetgio_baremetal.test", "cycle", "m"),
+					resource.TestCheckResourceAttr("biznetgio_baremetal.test", "pay_with_credit_card", "true"),
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal.test", "status"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_baremetal.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"timeouts",
+				},
+			},
+		},
+	})
+}
+
+func TestAccBaremetalKeypair_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		CheckDestroy:             testAccCheckBaremetalKeypairDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: `resource "biznetgio_baremetal_keypair" "test" {
+					name = "tf-acc-test-key"
+				}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal_keypair.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal_keypair.test", "keypair_id"),
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal_keypair.test", "public_key"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_baremetal_keypair.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// private key cuma muncul sekali di response create, gak bisa di-refresh
+					"private_key",
+				},
+			},
+		},
+	})
+}
+
+func testAccBaremetalConfig(label string) string {
+	return fmt.Sprintf(`
+data "biznetgio_baremetal_products" "all" {}
+
+resource "biznetgio_baremetal_keypair" "test" {
+	name = "tf-acc-test-key"
+}
+
+resource "biznetgio_baremetal" "test" {
+	product_id = data.biznetgio_baremetal_products.all.products[0].product_id
+	cycle      = "m"
+	label      = %q
+	keypair_id = biznetgio_baremetal_keypair.test.keypair_id
+	public_ip  = 1
+}
+`, label)
+}
