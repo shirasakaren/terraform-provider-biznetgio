@@ -40,3 +40,4 @@ type BaremetalAdditionalIPResourceModel struct {
 
 func NewBaremetalAdditionalIPResource() resource.Resource {
 	return &BaremetalAdditionalIPResource{}
+// wip 629
