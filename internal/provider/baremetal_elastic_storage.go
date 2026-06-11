@@ -86,3 +86,4 @@ func (r *BaremetalElasticStorageResource) Schema(ctx context.Context, _ resource
 				Default:             int64default.StaticInt64(100),
 				MarkdownDescription: "Ukuran storage dalam GB. Default 100. Kalau berubah, provider panggil upgrade (`PUT .../{account_id}`) — grow-only, set lebih kecil bakal ditolak API.",
 			},
+// wip 641
