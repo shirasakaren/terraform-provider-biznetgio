@@ -78,3 +78,43 @@ func (s *ObjectStorageService) ProductsList(ctx context.Context) ([]map[string]a
 }
 
 func (s *ObjectStorageService) ProductGet(ctx context.Context, productID int64) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/object-storages/products/%d", productID), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) CredentialsList(ctx context.Context, accountID int64) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/object-storages/accounts/%d/credentials", accountID), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) CredentialCreate(ctx context.Context, accountID int64) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "POST", fmt.Sprintf("/object-storages/accounts/%d/credentials", accountID), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) CredentialUpdate(ctx context.Context, accountID int64, accessKey string, req CredentialStatusRequest) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "PUT", fmt.Sprintf("/object-storages/accounts/%d/credentials/%s", accountID, esc(accessKey)), req, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) CredentialDelete(ctx context.Context, accountID int64, accessKey string) error {
+	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/object-storages/accounts/%d/credentials/%s", accountID, esc(accessKey)), nil, nil)
+}
+
+func (s *ObjectStorageService) BucketsList(ctx context.Context, accountID int64) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/object-storages/accounts/%d/buckets", accountID), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) BucketCreate(ctx context.Context, accountID int64, req BucketCreateRequest) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "POST", fmt.Sprintf("/object-storages/accounts/%d/buckets", accountID), req, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) BucketSetACL(ctx context.Context, accountID int64, bucketName string, req SetACLRequest) (map[string]any, error) {
