@@ -76,3 +76,4 @@ func (r *GpuKeypairResource) Configure(ctx context.Context, req resource.Configu
 			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
+// wip 632
