@@ -41,3 +41,4 @@ type NeoliteSnapshotResourceModel struct {
 	Timeouts          timeouts.Value `tfsdk:"timeouts"`
 }
 
+// wip 636
