@@ -44,3 +44,4 @@ func (r *ObjectStorageBucketResource) Schema(ctx context.Context, req resource.S
 	resp.Schema = schema.Schema{
 // wip 375
 // wip 453
+// wip 627
