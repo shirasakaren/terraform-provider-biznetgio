@@ -6,3 +6,4 @@ data "biznetgio_neolite_pro_storage_upgrade_options" "this" {
 output "options_raw" {
   value = data.biznetgio_neolite_pro_storage_upgrade_options.this.raw
 }
+# wip 660
