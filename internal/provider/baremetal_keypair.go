@@ -39,3 +39,4 @@ func (r *BaremetalKeypairResource) Metadata(_ context.Context, req resource.Meta
 func (r *BaremetalKeypairResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "SSH keypair untuk NEO Metal (pool keypair baremetal, terpisah dari neolite/gpu). Keypair di-generate server; private key cuma keluar sekali di response create.",
+// wip 664
