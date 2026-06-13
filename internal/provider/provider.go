@@ -39,5 +39,44 @@ func (p *BiznetgioProvider) Schema(ctx context.Context, req provider.SchemaReque
 				Optional:            true,
 				Sensitive:           true,
 				MarkdownDescription: "BiznetGIO API token sent as x-token header. May also be set via BIZNETGIO_API_KEY env var.",
-// wip 275
-// wip 300
+			},
+			"base_url": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "BiznetGIO API base URL. May also be set via BIZNETGIO_BASE_URL env var. Defaults to https://api.portal.biznetgio.com/v1",
+			},
+			"timeout": schema.Int64Attribute{
+				Optional:            true,
+				MarkdownDescription: "HTTP client timeout in seconds. Defaults to 30.",
+			},
+		},
+	}
+}
+
+func (p *BiznetgioProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	apiKey := os.Getenv("BIZNETGIO_API_KEY")
+	baseURL := os.Getenv("BIZNETGIO_BASE_URL")
+
+	var data BiznetgioProviderModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if data.APIKey.ValueString() != "" {
+		apiKey = data.APIKey.ValueString()
+	}
+	if data.BaseURL.ValueString() != "" {
+		baseURL = data.BaseURL.ValueString()
+	}
+
+	if apiKey == "" {
+		resp.Diagnostics.AddError(
+			"Missing API Key Configuration",
+			"While configuring the provider, the API key was not found in "+
+				"the BIZNETGIO_API_KEY environment variable or provider "+
+				"configuration block api_key attribute.",
+		)
+		// jangan early return, biar error kumpul semua dulu
+	}
+	if baseURL == "" {
+		baseURL = "https://api.portal.biznetgio.com/v1"
