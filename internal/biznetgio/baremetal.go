@@ -37,3 +37,4 @@ func (s *BaremetalService) Create(ctx context.Context, req BaremetalCreateReques
 // wip 424
 // wip 512
 // wip 666
+// wip 670
