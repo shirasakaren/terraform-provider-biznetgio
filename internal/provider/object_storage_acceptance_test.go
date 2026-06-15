@@ -208,6 +208,87 @@ func testAccObjectStorageBucketConfig(productID int64, cycle, label, acl string)
 	return fmt.Sprintf(`
 resource "biznetgio_object_storage" "test" {
   product_id           = %[1]d
-// wip 397
-// wip 480
-// wip 572
+  cycle                = %[2]q
+  label                = %[3]q
+  pay_with_credit_card = true
+}
+
+resource "biznetgio_object_storage_bucket" "test" {
+  account_id = biznetgio_object_storage.test.id
+  name       = "tf-acc-bucket"
+  acl        = %[4]q
+}
+`, productID, cycle, label, acl)
+}
+
+func testAccObjectStorageCredentialConfig(productID int64, cycle, label string) string {
+	return fmt.Sprintf(`
+resource "biznetgio_object_storage" "test" {
+  product_id           = %[1]d
+  cycle                = %[2]q
+  label                = %[3]q
+  pay_with_credit_card = true
+}
+
+resource "biznetgio_object_storage_credential" "test" {
+  account_id = biznetgio_object_storage.test.id
+}
+`, productID, cycle, label)
+}
+
+func testAccObjectStorageCredentialDisabledConfig(productID int64, cycle, label string) string {
+	return fmt.Sprintf(`
+resource "biznetgio_object_storage" "test" {
+  product_id           = %[1]d
+  cycle                = %[2]q
+  label                = %[3]q
+  pay_with_credit_card = true
+}
+
+resource "biznetgio_object_storage_credential" "test" {
+  account_id = biznetgio_object_storage.test.id
+  active     = false
+}
+`, productID, cycle, label)
+}
+
+func testAccObjectStorageObjectConfig(productID int64, cycle, label string) string {
+	return fmt.Sprintf(`
+resource "biznetgio_object_storage" "test" {
+  product_id           = %[1]d
+  cycle                = %[2]q
+  label                = %[3]q
+  pay_with_credit_card = true
+}
+
+resource "biznetgio_object_storage_bucket" "test" {
+  account_id = biznetgio_object_storage.test.id
+  name       = "tf-acc-obj"
+}
+
+resource "biznetgio_object_storage_object" "test" {
+  account_id = biznetgio_object_storage.test.id
+  bucket     = biznetgio_object_storage_bucket.test.name
+  key        = "test/hello.txt"
+  content    = "halo gais"
+}
+`, productID, cycle, label)
+}
+
+func testAccObjectStorageInstancesDSConfig(productID int64, cycle, label string) string {
+	return fmt.Sprintf(`
+resource "biznetgio_object_storage" "test" {
+  product_id           = %[1]d
+  cycle                = %[2]q
+  label                = %[3]q
+  pay_with_credit_card = true
+}
+
+data "biznetgio_object_storage_instances" "test" {
+  status = "Active"
+}
+`, productID, cycle, label)
+}
+
+func testAccObjectStorageBucketsDSConfig(productID int64, cycle, label string) string {
+	return fmt.Sprintf(`
