@@ -39,4 +39,44 @@ func (r *BaremetalKeypairResource) Metadata(_ context.Context, req resource.Meta
 func (r *BaremetalKeypairResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "SSH keypair untuk NEO Metal (pool keypair baremetal, terpisah dari neolite/gpu). Keypair di-generate server; private key cuma keluar sekali di response create.",
-// wip 664
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Resource id = keypair_id.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"keypair_id": schema.Int64Attribute{
+				Computed:            true,
+				MarkdownDescription: "Id keypair di BiznetGIO.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
+			"name": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "Nama keypair.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"public_key": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Kalau diisi, keypair di-import via `POST /baremetals/keypairs/import`. Kalau kosong, keypair di-generate server. Output-nya selalu public key dari API.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"private_key": schema.StringAttribute{
+				Computed:            true,
+				Sensitive:           true,
+				MarkdownDescription: "Private key dari response create (kalau API ngasih). Cuma muncul sekali; di Read berikutnya di-keep dari state.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON item keypair dari list API.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+		},
+	}
+}
+
+func (r *BaremetalKeypairResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
