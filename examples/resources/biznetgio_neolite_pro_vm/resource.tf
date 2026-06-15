@@ -31,3 +31,4 @@ resource "biznetgio_neolite_pro_vm" "main" {
 # Ganti power: power_state = "stop" (start/stop/suspend/resume/shutdown)
 
 # Rebuild OS: rebuild_os = data.biznetgio_neolite_pro_os_list.ubuntu.oss[1].name
+# wip 707
