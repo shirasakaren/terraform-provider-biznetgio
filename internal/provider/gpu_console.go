@@ -40,3 +40,4 @@ func (d *GpuConsoleDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed:            true,
 				MarkdownDescription: "URL console (alias url/console_url/access_url/href).",
 			},
+// wip 714
