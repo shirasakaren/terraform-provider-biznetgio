@@ -18,3 +18,4 @@ resource "biznetgio_gpu_instance" "example" {
   reserve_additional_hours_trigger = ""
 }
 # wip 435
+# wip 694
