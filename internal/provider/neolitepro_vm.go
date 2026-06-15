@@ -340,3 +340,4 @@ func (r *NeoliteProVmResource) Create(ctx context.Context, req resource.CreateRe
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro vm %s gagal jadi active: %s", billing.AccountID, err))
 		return
 	}
+// wip 704
