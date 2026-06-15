@@ -80,4 +80,85 @@ func (p *BiznetgioProvider) Configure(ctx context.Context, req provider.Configur
 	}
 	if baseURL == "" {
 		baseURL = "https://api.portal.biznetgio.com/v1"
-// wip 690
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	timeout := 30 * time.Second
+	if !data.Timeout.IsNull() {
+		timeout = time.Duration(data.Timeout.ValueInt64()) * time.Second
+	}
+
+	client := biznetgio.New(baseURL, apiKey, timeout)
+
+	resp.DataSourceData = client
+	resp.ResourceData = client
+}
+
+func (p *BiznetgioProvider) Resources(ctx context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		// metal dulu
+		NewBaremetalResource,
+		NewBaremetalKeypairResource,
+		NewBaremetalAdditionalIPResource,
+		NewBaremetalAdditionalIPAssignmentResource,
+		NewBaremetalElasticStorageResource,
+		// gpu cekidot
+		NewGpuInstanceResource,
+		NewGpuKeypairResource,
+		// neolite gaskeun
+		NewNeoliteVMResource,
+		NewNeoliteKeypairResource,
+		NewNeoliteSnapshotResource,
+		NewNeoliteVMFromSnapshotResource,
+		NewNeoliteDiskResource,
+		// pro gacor
+		NewNeoliteProVmResource,
+		NewNeoliteProKeypairResource,
+		NewNeoliteProSnapshotResource,
+		NewNeoliteProDiskResource,
+		// object storage jos
+		NewObjectStorageResource,
+		NewObjectStorageBucketResource,
+		NewObjectStorageCredentialResource,
+		NewObjectStorageObjectResource,
+	}
+}
+
+func (p *BiznetgioProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		// metal dulu
+		NewBaremetalProductsDataSource,
+		NewBaremetalRebuildOSListDataSource,
+		NewBaremetalOpenVPNDataSource,
+		// gpu cekidot
+		NewGpuProductsDataSource,
+		NewGpuConsoleDataSource,
+		NewGpuGraphDataSource,
+		// neolite gaskeun
+		NewNeoliteProductsDataSource,
+		NewNeoliteOsListDataSource,
+		NewNeoliteChangePackageOptionsDataSource,
+		NewNeoliteStorageUpgradeOptionsDataSource,
+		NewNeoliteIPAvailabilityDataSource,
+		// pro gacor
+		NewNeoliteProProductsDataSource,
+		NewNeoliteProOsListDataSource,
+		NewNeoliteProChangePackageOptionsDataSource,
+		NewNeoliteProStorageUpgradeOptionsDataSource,
+		NewNeoliteProIPAvailabilityDataSource,
+		// object storage jos
+		NewObjectStorageInstancesDataSource,
+		NewObjectStorageBucketsDataSource,
+		NewObjectStorageCredentialsDataSource,
+	}
+}
+
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &BiznetgioProvider{
+			version: version,
+		}
+	}
+}
