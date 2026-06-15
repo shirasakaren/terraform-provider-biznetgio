@@ -31,3 +31,4 @@ resource "biznetgio_neolite_vm_from_snapshot" "restored" {
   console_password     = "s3cretP4ssw0rd"
 }
 # wip 657
+# wip 708
