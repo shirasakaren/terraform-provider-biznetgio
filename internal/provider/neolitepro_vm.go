@@ -226,3 +226,117 @@ func (r *NeoliteProVmResource) Schema(ctx context.Context, _ resource.SchemaRequ
 			"region_label": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Label region VM.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"next_due": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Tanggal tagihan berikutnya.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"recurring_amount": schema.Int64Attribute{
+				Computed:            true,
+				MarkdownDescription: "Nominal recurring per siklus.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
+			"billingcycle": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Siklus billing aktif.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"product_name": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Nama product aktif.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"last_invoice": schema.SingleNestedAttribute{
+				Computed:            true,
+				MarkdownDescription: "Invoice terakhir VM.",
+				Attributes: map[string]schema.Attribute{
+					"id":           schema.Int64Attribute{Computed: true, MarkdownDescription: "Id invoice."},
+					"paid_id":      schema.Int64Attribute{Computed: true, MarkdownDescription: "Id pembayaran invoice."},
+					"status":       schema.StringAttribute{Computed: true, MarkdownDescription: "Status invoice."},
+					"date":         schema.StringAttribute{Computed: true, MarkdownDescription: "Tanggal invoice."},
+					"duedate":      schema.StringAttribute{Computed: true, MarkdownDescription: "Tanggal jatuh tempo."},
+					"paybefore":    schema.StringAttribute{Computed: true, MarkdownDescription: "Batas bayar."},
+					"datepaid":     schema.StringAttribute{Computed: true, MarkdownDescription: "Tanggal dibayar."},
+					"invoice_type": schema.StringAttribute{Computed: true, MarkdownDescription: "Tipe invoice."},
+				},
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON response akun terakhir dari API, buat akses field yang belum dimodel (cipassword di-mask).",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *NeoliteProVmResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *NeoliteProVmResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data NeoliteProVmResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	billing, err := r.client.NeolitePro().VMCreate(ctx, biznetgio.NeoliteCreateRequest{
+		ProductID:         data.ProductID.ValueInt64(),
+		Cycle:             data.Cycle.ValueString(),
+		SelectOS:          data.SelectOS.ValueString(),
+		KeypairID:         data.KeypairID.ValueInt64(),
+		VMName:            data.VMName.ValueString(),
+		Description:       data.Description.ValueString(),
+		SSHAndConsoleUser: data.SSHAndConsoleUser.ValueString(),
+		ConsolePassword:   data.ConsolePassword.ValueString(),
+		Promocode:         data.Promocode.ValueString(),
+		PayInvoiceWithCC:  ccYesNo(data.PayWithCreditCard),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create neolite pro vm: %s", err))
+		return
+	}
+	if billing.AccountID == "" {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create neolite pro vm response tidak ada account_id: order_id=%s", billing.OrderID))
+		return
+	}
+	data.ID = types.StringValue(billing.AccountID)
+	data.OrderID = types.StringValue(billing.OrderID)
+
+	tflog.Info(ctx, "neolite pro vm created, menunggu active", map[string]any{"account_id": billing.AccountID})
+	acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (biznetgio.AccountResource, error) {
+			return r.client.NeolitePro().AccountGet(ctx, parseAccountID(billing.AccountID))
+		},
+		accountStatus, []string{"active"}, []string{"suspended", "terminated"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro vm %s gagal jadi active: %s", billing.AccountID, err))
+		return
+	}
