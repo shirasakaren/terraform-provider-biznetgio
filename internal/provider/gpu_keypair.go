@@ -76,4 +76,42 @@ func (r *GpuKeypairResource) Configure(ctx context.Context, req resource.Configu
 			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
-// wip 632
+	}
+	r.client = client
+}
+
+func (r *GpuKeypairResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data GpuKeypairResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	m, err := r.client.GPU().KeypairCreate(ctx, biznetgio.KeypairCreateRequest{Name: data.Name.ValueString()})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("unable to create gpu keypair: %s", err))
+		return
+	}
+
+	keypairID, ok := gpuInt64(m, "keypair_id", "id")
+	if !ok {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("gpu keypair create response missing keypair_id: %v", m))
+		return
+	}
+	data.ID = types.StringValue(strconv.FormatInt(keypairID, 10))
+	gpuKeypairSetFromMap(&data, m)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *GpuKeypairResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data GpuKeypairResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	keypairID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("invalid gpu keypair id %q: %s", data.ID.ValueString(), err))
+		return
+	}
