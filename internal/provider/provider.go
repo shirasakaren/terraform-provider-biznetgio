@@ -80,3 +80,4 @@ func (p *BiznetgioProvider) Configure(ctx context.Context, req provider.Configur
 	}
 	if baseURL == "" {
 		baseURL = "https://api.portal.biznetgio.com/v1"
+// wip 690
