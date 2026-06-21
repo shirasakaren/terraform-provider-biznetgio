@@ -1,1 +1,1 @@
-// wip 0
+terraform import biznetgio_neolite_pro_disk.main <disk_account_id>
