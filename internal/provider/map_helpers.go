@@ -28,3 +28,33 @@ func aliasInt(v map[string]any, keys ...string) int64 {
 				continue
 			}
 			switch n := x.(type) {
+			case json.Number:
+				i, err := n.Int64()
+				if err == nil {
+					return i
+				}
+			case float64:
+				return int64(n)
+			case string:
+				i, err := strconv.ParseInt(n, 10, 64)
+				if err == nil {
+					return i
+				}
+			}
+		}
+	}
+	return 0
+}
+
+// rawJSON marshal map ke string JSON pake redactJSON, fallback empty string.
+func rawJSON(v map[string]any) string {
+	if v == nil {
+		return ""
+	}
+	return string(redactJSON(v))
+}
+
+// lowerStatus ambil status/state lalu lower-case biar polling case-insensitive.
+func lowerStatus(v map[string]any) string {
+	return strings.ToLower(aliasStr(v, "status", "state"))
+}
