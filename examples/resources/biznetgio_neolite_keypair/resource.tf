@@ -7,3 +7,4 @@ resource "biznetgio_neolite_keypair" "main" {
 # resource "biznetgio_neolite_keypair" "imported" {
 #   name = "existing-key"
 # }
+# wip 749
