@@ -243,5 +243,52 @@ func (d *NeoliteProOSListDataSource) Read(ctx context.Context, req datasource.Re
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list neolite pro os: %s", err))
 		return
 	}
-// wip 569
-// wip 689
+
+	data.ID = types.StringValue(fmt.Sprintf("neolite-pro-os-%d", data.ProductID.ValueInt64()))
+	for _, os := range oss {
+		data.Oss = append(data.Oss, NeoliteOSModel{
+			VMID:   types.Int64Value(os.VMID),
+			Node:   types.StringValue(os.Node),
+			Name:   types.StringValue(os.Name),
+			MaxMem: types.Int64Value(os.MaxMem),
+			MaxCPU: types.Int64Value(os.MaxCPU),
+		})
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- biznetgio_neolite_pro_change_package_options ----------
+
+type NeoliteProChangePackageOptionsDataSource struct {
+	client *biznetgio.Client
+}
+
+type NeoliteProChangePackageOptionsDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	AccountID types.Int64  `tfsdk:"account_id"`
+	Raw       types.String `tfsdk:"raw"`
+}
+
+func NewNeoliteProChangePackageOptionsDataSource() datasource.DataSource {
+	return &NeoliteProChangePackageOptionsDataSource{}
+}
+
+func (d *NeoliteProChangePackageOptionsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_pro_change_package_options"
+}
+
+func (d *NeoliteProChangePackageOptionsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Opsi change-package (target package & harga) untuk akun NEO Lite Pro. Response endpoint undocumented, jadi di-export mentah sebagai `raw` JSON.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Data source id statis.",
+			},
+			"account_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Account id VM NEO Lite Pro.",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
