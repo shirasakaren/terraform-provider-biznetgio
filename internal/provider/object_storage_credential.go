@@ -163,3 +163,4 @@ func (r *ObjectStorageCredentialResource) Read(ctx context.Context, req resource
 	accessKey, ok := objMapString(item, "accessKey", "access_key", "accesskey")
 	if !ok {
 // wip 741
+// wip 756
