@@ -250,5 +250,86 @@ func TestAccNeoliteVMFromSnapshot_basic(t *testing.T) {
 			{
 				Config: testAccNeoliteBaseConfig() + `
 resource "biznetgio_neolite_snapshot" "test" {
-// wip 535
-// wip 552
+  neolite_account_id = biznetgio_neolite_vm.test.id
+  name               = "tf-acc-snapshot"
+  cycle              = "m"
+}
+
+resource "biznetgio_neolite_vm_from_snapshot" "test" {
+  snapshot_id        = biznetgio_neolite_snapshot.test.id
+  product_id         = data.biznetgio_neolite_products.this.products[0].product_id
+  cycle              = "m"
+  keypair_id         = biznetgio_neolite_keypair.test.keypair_id
+  name               = "tf-acc-restored"
+  ssh_and_console_user = "tfaccuser"
+  console_password   = "TfaccP4ssw0rd!"
+}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_vm_from_snapshot.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_vm_from_snapshot.test", "order_id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_vm_from_snapshot.test", "status"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_neolite_vm_from_snapshot.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// semua input create-only
+					"snapshot_id",
+					"product_id",
+					"cycle",
+					"keypair_id",
+					"name",
+					"description",
+					"ssh_and_console_user",
+					"console_password",
+					"promocode",
+					"pay_with_credit_card",
+					"timeouts",
+				},
+			},
+		},
+	})
+}
+
+func TestAccNeoliteDisk_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		CheckDestroy:             testAccCheckNeoliteDiskDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNeoliteBaseConfig() + `
+resource "biznetgio_neolite_disk" "test" {
+  product_id         = 30
+  cycle              = "m"
+  neolite_account_id = biznetgio_neolite_vm.test.id
+  service_name       = "tf-acc-disk"
+  size               = 20
+}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_disk.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_disk.test", "order_id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_disk.test", "status"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_neolite_disk.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// create-only / mungkin ga ada di detail response
+					"product_id",
+					"cycle",
+					"neolite_account_id",
+					"service_name",
+					"promocode",
+					"pay_with_credit_card",
+					"size",
+					"timeouts",
+				},
+			},
+		},
+	})
+}
