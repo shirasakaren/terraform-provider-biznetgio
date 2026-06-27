@@ -48,3 +48,4 @@ Read-Only:
 - `vmid` (Number) Id OS template.
 
 <!-- wip 506 -->
+<!-- wip 806 -->
