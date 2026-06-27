@@ -213,3 +213,4 @@ func (d *BaremetalOpenVPNDataSource) Schema(_ context.Context, _ datasource.Sche
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Konfigurasi OpenVPN akses OOB ke bare-metal (`GET /baremetals/openvpn`, scope seluruh customer).",
 		Attributes: map[string]schema.Attribute{
+// wip 794
