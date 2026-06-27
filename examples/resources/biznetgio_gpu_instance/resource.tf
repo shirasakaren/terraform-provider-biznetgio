@@ -20,3 +20,4 @@ resource "biznetgio_gpu_instance" "example" {
 # wip 435
 # wip 694
 # wip 745
+# wip 787
