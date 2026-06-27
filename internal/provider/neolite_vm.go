@@ -318,3 +318,259 @@ func (r *NeoliteVMResource) Create(ctx context.Context, req resource.CreateReque
 
 	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
 	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !data.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+	billing, err := r.client.Neolite().VMCreate(ctx, biznetgio.NeoliteCreateRequest{
+		ProductID:         data.ProductID.ValueInt64(),
+		Cycle:             data.Cycle.ValueString(),
+		SelectOS:          data.SelectOS.ValueString(),
+		KeypairID:         data.KeypairID.ValueInt64(),
+		VMName:            data.VMName.ValueString(),
+		Description:       data.Description.ValueString(),
+		SSHAndConsoleUser: data.SSHAndConsoleUser.ValueString(),
+		ConsolePassword:   data.ConsolePassword.ValueString(),
+		Promocode:         data.Promocode.ValueString(),
+		PayInvoiceWithCC:  cc,
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create neolite vm: %s", err))
+		return
+	}
+	if billing.AccountID == "" {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create neolite vm response tidak ada account_id: order_id=%s", billing.OrderID))
+		return
+	}
+	data.ID = types.StringValue(billing.AccountID)
+	data.OrderID = types.StringValue(billing.OrderID)
+
+	tflog.Info(ctx, "neolite vm created, menunggu active", map[string]any{"account_id": billing.AccountID})
+	acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (biznetgio.AccountResource, error) {
+			return r.client.Neolite().AccountGet(ctx, parseAccountID(billing.AccountID))
+		},
+		accountStatus, []string{"active"}, []string{"suspended", "terminated"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite vm %s gagal jadi active: %s", billing.AccountID, err))
+		return
+	}
+	data.Status = types.StringValue(acc.Status)
+
+	if err := r.refresh(ctx, &data); err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read neolite vm %s: %s", billing.AccountID, err))
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteVMResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data NeoliteVMResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	err := r.refresh(ctx, &data)
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read neolite vm %s: %s", data.ID.ValueString(), err))
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteVMResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state NeoliteVMResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	accountID := parseAccountID(state.ID.ValueString())
+
+	if !plan.VMName.Equal(state.VMName) {
+		if err := r.client.Neolite().VMChangeName(ctx, accountID, plan.VMName.ValueString()); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change neolite vm name: %s", err))
+			return
+		}
+		state.VMName = plan.VMName
+	}
+	if !plan.KeypairID.Equal(state.KeypairID) {
+		if err := r.client.Neolite().VMChangeKeypair(ctx, accountID, plan.KeypairID.ValueInt64()); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change neolite vm keypair: %s", err))
+			return
+		}
+		state.KeypairID = plan.KeypairID
+	}
+
+	needsPoll := false
+	if !plan.ProductID.Equal(state.ProductID) {
+		if _, err := r.client.Neolite().VMChangePackage(ctx, accountID, biznetgio.NeoliteChangePackageRequest{
+			NewProductID:     plan.ProductID.ValueInt64(),
+			PayInvoiceWithCC: ccYesNo(plan.PayWithCreditCard),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change neolite vm package: %s", err))
+			return
+		}
+		state.ProductID = plan.ProductID
+		needsPoll = true
+	}
+	if !plan.DiskSize.Equal(state.DiskSize) {
+		newSize := plan.DiskSize.ValueInt64()
+		oldSize := state.DiskSize.ValueInt64()
+		if newSize < oldSize {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite vm storage cuma bisa di-upgrade: %d -> %d", oldSize, newSize))
+			return
+		}
+		if _, err := r.client.Neolite().VMChangeStorage(ctx, accountID, biznetgio.NeoliteUpgradeStorageRequest{
+			DiskSize:         newSize,
+			PayInvoiceWithCC: ccYesNo(plan.PayWithCreditCard),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change neolite vm storage: %s", err))
+			return
+		}
+		state.DiskSize = plan.DiskSize
+		needsPoll = true
+	}
+	if !plan.PowerState.IsUnknown() && !plan.PowerState.Equal(state.PowerState) {
+		ps := plan.PowerState.ValueString()
+		if err := r.client.Neolite().VMState(ctx, accountID, ps); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set neolite vm power state %q: %s", ps, err))
+			return
+		}
+		state.PowerState = plan.PowerState
+	}
+	if !plan.RebuildOS.IsUnknown() && !plan.RebuildOS.Equal(state.RebuildOS) {
+		if err := r.client.Neolite().VMRebuild(ctx, accountID, plan.RebuildOS.ValueString()); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to rebuild neolite vm: %s", err))
+			return
+		}
+		state.RebuildOS = plan.RebuildOS
+		needsPoll = true
+	}
+	if !plan.MigrateToPro.IsUnknown() && !plan.MigrateToPro.Equal(state.MigrateToPro) {
+		proProductID, err := strconv.ParseInt(plan.MigrateToPro.ValueString(), 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("migrate_to_pro harus berisi neolitepro_product_id numeric: %q", plan.MigrateToPro.ValueString()))
+			return
+		}
+		if _, err := r.client.Neolite().MigrateToPro(ctx, accountID, biznetgio.MigrateToProRequest{
+			NeoliteProProductID: proProductID,
+			PayInvoiceWithCC:    ccYesNo(plan.PayWithCreditCard),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to migrate neolite vm to pro: %s", err))
+			return
+		}
+		state.MigrateToPro = plan.MigrateToPro
+		needsPoll = true
+	}
+
+	// description ga punya endpoint update — state tetap bawa nilai server dari Read/refresh.
+
+	if needsPoll {
+		tflog.Info(ctx, "neolite vm action dikirim, menunggu active", map[string]any{"account_id": state.ID.ValueString()})
+		acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+			func(ctx context.Context) (biznetgio.AccountResource, error) {
+				return r.client.Neolite().AccountGet(ctx, accountID)
+			},
+			accountStatus, []string{"active"}, []string{"suspended", "terminated"})
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite vm %s gagal balik active: %s", state.ID.ValueString(), err))
+			return
+		}
+		state.Status = types.StringValue(acc.Status)
+	}
+
+	if err := r.refresh(ctx, &state); err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read neolite vm %s: %s", state.ID.ValueString(), err))
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *NeoliteVMResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data NeoliteVMResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, 10*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	err := r.client.Neolite().VMDelete(ctx, parseAccountID(data.ID.ValueString()))
+	if err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete neolite vm %s: %s", data.ID.ValueString(), err))
+		return
+	}
+}
+
+func (r *NeoliteVMResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// refresh isi semua computed field dari AccountGet + VMDetails.
+func (r *NeoliteVMResource) refresh(ctx context.Context, data *NeoliteVMResourceModel) error {
+	accountID := parseAccountID(data.ID.ValueString())
+
+	acc, err := r.client.Neolite().AccountGet(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	data.Status = types.StringValue(acc.Status)
+	data.BillingCycle = types.StringValue(acc.Billingcycle)
+	data.NextDue = types.StringValue(acc.NextDue)
+	data.RecurringAmount = types.Int64Value(acc.RecurringAmount)
+	data.ProductID = types.Int64Value(acc.ProductID)
+	data.ProductName = types.StringValue(acc.ProductName)
+	data.Description = types.StringValue(acc.Description)
+	data.Region = types.StringValue(acc.ExtraDetails.Region)
+	data.RegionLabel = types.StringValue(acc.ExtraDetails.RegionLabel)
+	data.CIUser = types.StringValue(acc.ExtraDetails.CIUser)
+	data.CIPassword = types.StringValue(acc.ExtraDetails.CIPassword)
+	data.OSName = types.StringValue(acc.ExtraDetails.OSName)
+	if acc.ExtraDetails.KeypairID != 0 {
+		data.KeypairID = types.Int64Value(acc.ExtraDetails.KeypairID)
+	}
+	if v := acc.ExtraDetails.DiskSize; v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			data.DiskSize = types.Int64Value(n)
+		}
+	}
+	if v := acc.ExtraDetails.Name; v != "" {
+		data.VMName = types.StringValue(v)
+	}
+	data.LastInvoice = NeoliteLastInvoiceModel{
+		ID:          types.Int64Value(acc.LastInvoice.ID),
+		PaidID:      types.Int64Value(acc.LastInvoice.PaidID),
+		Status:      types.StringValue(acc.LastInvoice.Status),
+		Date:        types.StringValue(acc.LastInvoice.Date),
+		Duedate:     types.StringValue(acc.LastInvoice.Duedate),
