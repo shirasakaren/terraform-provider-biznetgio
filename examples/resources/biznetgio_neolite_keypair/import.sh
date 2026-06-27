@@ -1,3 +1,1 @@
-// wip 0
-// wip 273
-// wip 522
+terraform import biznetgio_neolite_keypair.main <keypair_id>
