@@ -1,5 +1,1 @@
-// wip 0
-// wip 208
-// wip 372
-// wip 759
-// wip 781
+terraform import biznetgio_gpu_instance.example <account_id>
