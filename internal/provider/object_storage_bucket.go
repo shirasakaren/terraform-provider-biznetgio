@@ -174,3 +174,4 @@ func (r *ObjectStorageBucketResource) Update(ctx context.Context, req resource.U
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
+// wip 772
