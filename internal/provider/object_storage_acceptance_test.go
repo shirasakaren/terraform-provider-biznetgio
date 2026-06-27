@@ -292,3 +292,45 @@ data "biznetgio_object_storage_instances" "test" {
 
 func testAccObjectStorageBucketsDSConfig(productID int64, cycle, label string) string {
 	return fmt.Sprintf(`
+resource "biznetgio_object_storage" "test" {
+  product_id           = %[1]d
+  cycle                = %[2]q
+  label                = %[3]q
+  pay_with_credit_card = true
+}
+
+resource "biznetgio_object_storage_bucket" "test" {
+  account_id = biznetgio_object_storage.test.id
+  name       = "tf-acc-bucket"
+}
+
+data "biznetgio_object_storage_buckets" "test" {
+  account_id = biznetgio_object_storage.test.id
+}
+`, productID, cycle, label)
+}
+
+func testAccObjectStorageCredentialsDSConfig(productID int64, cycle, label string) string {
+	return fmt.Sprintf(`
+resource "biznetgio_object_storage" "test" {
+  product_id           = %[1]d
+  cycle                = %[2]q
+  label                = %[3]q
+  pay_with_credit_card = true
+}
+
+resource "biznetgio_object_storage_credential" "test" {
+  account_id = biznetgio_object_storage.test.id
+}
+
+data "biznetgio_object_storage_credentials" "test" {
+  account_id = biznetgio_object_storage.test.id
+}
+`, productID, cycle, label)
+}
+
+func testAccObjectStorageClient() *biznetgio.Client {
+	return biznetgio.New(os.Getenv("BIZNETGIO_BASE_URL"), os.Getenv("BIZNETGIO_API_KEY"), 0)
+}
+
+func testAccCheckObjectStorageDestroy(s *terraform.State) error {
