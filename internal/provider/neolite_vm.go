@@ -574,3 +574,4 @@ func (r *NeoliteVMResource) refresh(ctx context.Context, data *NeoliteVMResource
 		Status:      types.StringValue(acc.LastInvoice.Status),
 		Date:        types.StringValue(acc.LastInvoice.Date),
 		Duedate:     types.StringValue(acc.LastInvoice.Duedate),
+// wip 792
