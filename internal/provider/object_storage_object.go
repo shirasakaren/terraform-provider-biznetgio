@@ -158,3 +158,119 @@ func (r *ObjectStorageObjectResource) Create(ctx context.Context, req resource.C
 func (r *ObjectStorageObjectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data ObjectStorageObjectResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := objParseAccountID(data.AccountID.ValueString())
+	if err != nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	item, ok, err := objFindObject(ctx, r.client, accountID, data.Bucket.ValueString(), data.Key.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list objects: %s", err))
+		return
+	}
+	if !ok {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	if v, ok := objMapString(item, "acl"); ok {
+		data.ACL = types.StringValue(v)
+	}
+	data.Raw = objRawString(item)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageObjectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state ObjectStorageObjectResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if plan.ACL.Equal(state.ACL) {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
+	}
+
+	accountID, err := objParseAccountID(plan.AccountID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid account_id", err.Error())
+		return
+	}
+
+	if _, err := r.client.ObjectStorage().ObjectSetACL(ctx, accountID, plan.Bucket.ValueString(), plan.Key.ValueString(), biznetgio.SetACLRequest{
+		ACL: plan.ACL.ValueString(),
+	}); err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set ACL on object %q: %s", plan.Key.ValueString(), err))
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *ObjectStorageObjectResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data ObjectStorageObjectResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := objParseAccountID(data.AccountID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid account_id", err.Error())
+		return
+	}
+
+	if err := r.client.ObjectStorage().ObjectDelete(ctx, accountID, data.Bucket.ValueString(), data.Key.ValueString()); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete object %q: %s", data.Key.ValueString(), err))
+	}
+}
+
+func (r *ObjectStorageObjectResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	parts := strings.SplitN(req.ID, ":", 3)
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		resp.Diagnostics.AddError("Invalid Import ID", "Expected `<account_id>:<bucket>:<key>`")
+		return
+	}
+	resp.State.SetAttribute(ctx, tfpath.Root("account_id"), parts[0])
+	resp.State.SetAttribute(ctx, tfpath.Root("bucket"), parts[1])
+	resp.State.SetAttribute(ctx, tfpath.Root("key"), parts[2])
+}
+
+func objObjectBytes(source, content string) ([]byte, error) {
+	if source != "" {
+		return os.ReadFile(source)
+	}
+	return []byte(content), nil
+}
+
+func objSplitKey(key string) (string, string) {
+	dir, name := path.Split(key)
+	return strings.TrimSuffix(dir, "/"), name
+}
+
+func objFindObject(ctx context.Context, c *biznetgio.Client, accountID int64, bucket, key string) (map[string]any, bool, error) {
+	directory, name := objSplitKey(key)
+	var items []map[string]any
+	var err error
+	if directory != "" {
+		items, err = c.ObjectStorage().ObjectsListInDirectory(ctx, accountID, bucket, directory)
+	} else {
+		items, err = c.ObjectStorage().ObjectsList(ctx, accountID, bucket)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	for _, it := range items {
+		if on, ok := objMapString(it, "name", "key", "object_name"); ok && on == name {
+			return it, true, nil
+		}
+	}
+	return nil, false, nil
+}
