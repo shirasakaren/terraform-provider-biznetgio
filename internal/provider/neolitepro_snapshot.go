@@ -40,4 +40,87 @@ type NeoliteProSnapshotResourceModel struct {
 	Status            types.String   `tfsdk:"status"`
 	Timeouts          timeouts.Value `tfsdk:"timeouts"`
 }
-// wip 822
+
+func NewNeoliteProSnapshotResource() resource.Resource {
+	return &NeoliteProSnapshotResource{}
+}
+
+func (r *NeoliteProSnapshotResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_pro_snapshot"
+}
+
+func (r *NeoliteProSnapshotResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Snapshot akun NEO Lite Pro (snapshot bayar per-buatan, punya account id sendiri). Snapshot ga bisa di-update — ganti input = recreate.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Resource id = account_id snapshot di BiznetGIO.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"order_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Order id dari response create.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"neolite_account_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Account id VM NEO Lite Pro yang di-snapshot.",
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+			},
+			"name": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("snapshot-name"),
+				MarkdownDescription: "Nama snapshot. Default `snapshot-name`. Panjang 6-16, hanya huruf/angka/titik/dash.",
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(6, 16),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9\-\.]*$`), "hanya huruf, angka, titik, atau dash"),
+				},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"description": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString(""),
+				MarkdownDescription: "Deskripsi snapshot.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"cycle": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "Siklus billing: `m` monthly, `a` annual, `q` quarterly, `s` semiannual, `b` biennial, `t` triennial, `p4`, `p5`.",
+				Validators:          []validator.String{enumValidator{vals: []string{"m", "a", "q", "s", "b", "t", "p4", "p5"}}},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"pay_with_credit_card": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(true),
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.",
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+			},
+			"promocode": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString(""),
+				MarkdownDescription: "Kode promo saat order.",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Status snapshot (Active, Pending, Suspended, Terminated).",
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *NeoliteProSnapshotResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
