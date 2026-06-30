@@ -84,3 +84,4 @@ func (d *BaremetalProductsDataSource) Configure(_ context.Context, req datasourc
 
 func (d *BaremetalProductsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data BaremetalProductsDataSourceModel
+// wip 828
