@@ -163,3 +163,4 @@ func (s *GPUService) AccountID(v map[string]any) (int64, bool) {
 func (s *GPUService) ProductID(v map[string]any) (int64, bool) {
 	return mapInt64(v, "product_id")
 }
+// wip 857
