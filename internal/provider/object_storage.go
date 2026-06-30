@@ -268,3 +268,93 @@ func (r *ObjectStorageResource) Update(ctx context.Context, req resource.UpdateR
 		}
 		if _, err := r.client.ObjectStorage().QuotaUpgrade(ctx, accountID, biznetgio.ObjectStorageQuotaUpgradeRequest{
 			AddQuota:         newQuota - oldQuota,
+			PayInvoiceWithCC: pay,
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upgrade object storage %d quota: %s", accountID, err))
+			return
+		}
+		acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+			func(ctx context.Context) (map[string]any, error) {
+				return r.client.ObjectStorage().AccountGet(ctx, accountID)
+			},
+			func(m map[string]any) string {
+				v, _ := objMapString(m, "status", "state")
+				return v
+			},
+			[]string{"Active"}, []string{"Terminated", "Suspended", "error"},
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Object Storage Upgrade Failed",
+				fmt.Sprintf("Timed out waiting for object storage %d after quota upgrade: %s", accountID, err))
+			return
+		}
+		objSetAccountState(&plan, acc)
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *ObjectStorageResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data ObjectStorageResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, 10*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Object storage id %q is not numeric", data.ID.ValueString()))
+		return
+	}
+
+	if err := r.client.ObjectStorage().Delete(ctx, accountID); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete object storage %d: %s", accountID, err))
+	}
+}
+
+func (r *ObjectStorageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func objSetAccountState(data *ObjectStorageResourceModel, acc map[string]any) {
+	if v, ok := objMapString(acc, "status", "state"); ok {
+		data.Status = types.StringValue(v)
+	}
+	if v, ok := objMapString(acc, "label", "name"); ok {
+		data.Label = types.StringValue(v)
+	}
+	if v, ok := objMapString(acc, "order_id"); ok {
+		data.OrderID = types.StringValue(v)
+	}
+	if v, ok := objMapInt64(acc, "quota"); ok {
+		data.Quota = types.Int64Value(v)
+	}
+	if v, ok := objMapInt64(acc, "product_id"); ok {
+		data.ProductID = types.Int64Value(v)
+	}
+	if v, ok := objMapString(acc, "cycle"); ok {
+		data.Cycle = types.StringValue(v)
+	}
+	data.Raw = objRawString(acc)
+}
+
+func objMapString(v map[string]any, keys ...string) (string, bool) {
+	for _, k := range keys {
+		if s, ok := v[k].(string); ok && s != "" {
+			return s, true
+		}
+	}
+	return "", false
+}
+
+func objMapInt64(v map[string]any, keys ...string) (int64, bool) {
+	for _, k := range keys {
+		x, ok := v[k]
