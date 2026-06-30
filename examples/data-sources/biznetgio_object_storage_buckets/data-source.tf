@@ -5,3 +5,4 @@ data "biznetgio_object_storage_buckets" "example" {
 output "names" {
   value = [for b in data.biznetgio_object_storage_buckets.example.buckets : b.name]
 }
+# wip 836
