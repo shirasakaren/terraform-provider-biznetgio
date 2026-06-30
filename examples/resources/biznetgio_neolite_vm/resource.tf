@@ -27,3 +27,4 @@ resource "biznetgio_neolite_vm" "main" {
 # Rebuild OS: rebuild_os = data.biznetgio_neolite_os_list.ubuntu.oss[1].name
 
 # Migrate ke NEO Lite Pro: migrate_to_pro = "12345"  # neolitepro_product_id
+# wip 841
