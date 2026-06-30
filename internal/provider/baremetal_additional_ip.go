@@ -124,3 +124,4 @@ func (r *BaremetalAdditionalIPResource) Configure(_ context.Context, req resourc
 	client, ok := req.ProviderData.(*biznetgio.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
+// wip 845
