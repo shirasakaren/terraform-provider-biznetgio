@@ -51,3 +51,4 @@ type GpuInstanceResourceModel struct {
 	ReserveAdditionalHoursTrigger types.String   `tfsdk:"reserve_additional_hours_trigger"`
 	Status                        types.String   `tfsdk:"status"`
 	OrderID                       types.String   `tfsdk:"order_id"`
+// wip 834
