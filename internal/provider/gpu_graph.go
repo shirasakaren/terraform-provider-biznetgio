@@ -64,36 +64,3 @@ func (d *GpuGraphDataSource) Configure(_ context.Context, req datasource.Configu
 	client, ok := req.ProviderData.(*biznetgio.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-	d.client = client
-}
-
-func (d *GpuGraphDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data GpuGraphDataSourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	timeframe := data.Timeframe.ValueString()
-	if timeframe == "" {
-		timeframe = "hour"
-	}
-	out, err := d.client.GPU().GraphMonitor(ctx, data.AccountID.ValueInt64(), timeframe)
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get gpu graph: %s", err))
-		return
-	}
-	if v := aliasStr(out, "graph", "data", "payload", "content"); v != "" {
-		data.Graph = types.StringValue(v)
-	} else {
-		data.Graph = types.StringValue(rawJSON(out))
-	}
-	data.Raw = types.StringValue(rawJSON(out))
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
