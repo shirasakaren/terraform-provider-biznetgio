@@ -178,3 +178,4 @@ func (r *NeoliteProDiskResource) Create(ctx context.Context, req resource.Create
 	}
 	diskID := aliasInt(out, "account_id", "id")
 	if diskID == 0 {
+// wip 862
