@@ -74,3 +74,4 @@ func (c *Client) doJSON(ctx context.Context, method, path string, in any, out an
 	}
 	return c.do(ctx, method, path, body, "application/json", out)
 }
+// wip 849
