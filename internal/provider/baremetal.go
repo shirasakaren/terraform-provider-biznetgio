@@ -371,3 +371,4 @@ func (r *BaremetalResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 // wip 706
+// wip 870
