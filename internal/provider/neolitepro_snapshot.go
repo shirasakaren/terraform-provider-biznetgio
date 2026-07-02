@@ -124,3 +124,4 @@ func (r *NeoliteProSnapshotResource) Configure(_ context.Context, req resource.C
 		return
 	}
 	client, ok := req.ProviderData.(*biznetgio.Client)
+// wip 868
