@@ -1,6 +1,1 @@
-// wip 0
-// wip 91
-// wip 131
-// wip 220
-// wip 533
-// wip 757
+terraform import biznetgio_neolite_pro_vm.main <account_id>
