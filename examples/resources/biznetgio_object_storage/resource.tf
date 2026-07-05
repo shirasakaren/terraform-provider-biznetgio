@@ -6,3 +6,4 @@ resource "biznetgio_object_storage" "example" {
   quota                = 10
   pay_with_credit_card = true
 }
+# wip 878
