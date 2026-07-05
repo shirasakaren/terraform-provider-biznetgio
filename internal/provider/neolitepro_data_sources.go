@@ -292,4 +292,150 @@ func (d *NeoliteProChangePackageOptionsDataSource) Schema(_ context.Context, _ d
 			},
 			"raw": schema.StringAttribute{
 				Sensitive:           true,
-// wip 748
+				Computed:            true,
+				MarkdownDescription: "Full JSON response opsi change-package.",
+			},
+		},
+	}
+}
+
+func (d *NeoliteProChangePackageOptionsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	d.client = client
+}
+
+func (d *NeoliteProChangePackageOptionsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data NeoliteProChangePackageOptionsDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	out, err := d.client.NeolitePro().ChangePackagePrepare(ctx, data.AccountID.ValueInt64())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get neolite pro change-package options: %s", err))
+		return
+	}
+
+	data.ID = types.StringValue(fmt.Sprintf("neolite-pro-change-package-%d", data.AccountID.ValueInt64()))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- biznetgio_neolite_pro_storage_upgrade_options ----------
+
+type NeoliteProStorageUpgradeOptionsDataSource struct {
+	client *biznetgio.Client
+}
+
+type NeoliteProStorageUpgradeOptionsDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	AccountID types.Int64  `tfsdk:"account_id"`
+	Raw       types.String `tfsdk:"raw"`
+}
+
+func NewNeoliteProStorageUpgradeOptionsDataSource() datasource.DataSource {
+	return &NeoliteProStorageUpgradeOptionsDataSource{}
+}
+
+func (d *NeoliteProStorageUpgradeOptionsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_pro_storage_upgrade_options"
+}
+
+func (d *NeoliteProStorageUpgradeOptionsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Opsi upgrade storage (harga per GB) untuk akun NEO Lite Pro. Response endpoint undocumented, jadi di-export mentah sebagai `raw` JSON.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Data source id statis.",
+			},
+			"account_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Account id VM NEO Lite Pro.",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				MarkdownDescription: "Full JSON response opsi upgrade storage.",
+			},
+		},
+	}
+}
+
+func (d *NeoliteProStorageUpgradeOptionsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	d.client = client
+}
+
+func (d *NeoliteProStorageUpgradeOptionsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data NeoliteProStorageUpgradeOptionsDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	out, err := d.client.NeolitePro().StoragePrepare(ctx, data.AccountID.ValueInt64())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get neolite pro storage upgrade options: %s", err))
+		return
+	}
+
+	data.ID = types.StringValue(fmt.Sprintf("neolite-pro-storage-upgrade-%d", data.AccountID.ValueInt64()))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- biznetgio_neolite_pro_ip_availability ----------
+
+type NeoliteProIPAvailabilityDataSource struct {
+	client *biznetgio.Client
+}
+
+type NeoliteProIPAvailabilityDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	ProductID types.Int64  `tfsdk:"product_id"`
+	Available types.Bool   `tfsdk:"available"`
+}
+
+func NewNeoliteProIPAvailabilityDataSource() datasource.DataSource {
+	return &NeoliteProIPAvailabilityDataSource{}
+}
+
+func (d *NeoliteProIPAvailabilityDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_pro_ip_availability"
+}
+
+func (d *NeoliteProIPAvailabilityDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Cek ketersediaan public IP untuk product NEO Lite Pro.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Data source id statis.",
+			},
+			"product_id": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Product id NEO Lite Pro.",
