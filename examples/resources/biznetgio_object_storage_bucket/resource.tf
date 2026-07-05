@@ -3,3 +3,4 @@ resource "biznetgio_object_storage_bucket" "example" {
   name       = "my-app-assets"
   acl        = "private"
 }
+# wip 875
