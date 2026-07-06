@@ -1,4 +1,1 @@
-// wip 0
-// wip 106
-// wip 124
-// wip 530
+terraform import biznetgio_baremetal_elastic_storage.main <account_id>
