@@ -34,3 +34,4 @@ output "ip_available" {
 
 - `available` (Boolean) True kalau IP tersedia.
 - `id` (String) Data source id statis.
+<!-- wip 888 -->
