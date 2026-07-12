@@ -34,3 +34,4 @@ resource "biznetgio_neolite_vm_from_snapshot" "restored" {
 # wip 708
 # wip 739
 # wip 832
+# wip 901
