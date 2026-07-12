@@ -118,5 +118,83 @@ func (s *ObjectStorageService) BucketCreate(ctx context.Context, accountID int64
 }
 
 func (s *ObjectStorageService) BucketSetACL(ctx context.Context, accountID int64, bucketName string, req SetACLRequest) (map[string]any, error) {
-// wip 746
-// wip 864
+	var out map[string]any
+	err := s.client.doJSON(ctx, "PUT", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s", accountID, esc(bucketName)), req, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) BucketDelete(ctx context.Context, accountID int64, bucketName string) error {
+	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s", accountID, esc(bucketName)), nil, nil)
+}
+
+func (s *ObjectStorageService) BucketUsage(ctx context.Context, accountID int64, bucketName string) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/usage", accountID, esc(bucketName)), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) BucketInfo(ctx context.Context, accountID int64, bucketName, objectOrDirectory string) (map[string]any, error) {
+	var out map[string]any
+	path := fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/info", accountID, esc(bucketName))
+	if objectOrDirectory != "" {
+		path += "?object_or_directory=" + url.QueryEscape(objectOrDirectory)
+	}
+	err := s.client.doJSON(ctx, "GET", path, nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) ObjectsList(ctx context.Context, accountID int64, bucketName string) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/objects", accountID, esc(bucketName)), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) ObjectsListInDirectory(ctx context.Context, accountID int64, bucketName, directory string) ([]map[string]any, error) {
+	var out []map[string]any
+	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/objects/%s/", accountID, esc(bucketName), esc(directory)), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) ObjectCreateDirectory(ctx context.Context, accountID int64, bucketName, newDirectory string) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "POST", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/objects/%s/", accountID, esc(bucketName), esc(newDirectory)), nil, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) ObjectDownload(ctx context.Context, accountID int64, bucketName, objectName string) ([]byte, error) {
+	return s.client.raw(ctx, "GET", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/objects/%s", accountID, esc(bucketName), esc(objectName)), nil, "application/json")
+}
+
+func (s *ObjectStorageService) ObjectSetACL(ctx context.Context, accountID int64, bucketName, objectOrDirectory string, req SetACLRequest) (map[string]any, error) {
+	var out map[string]any
+	err := s.client.doJSON(ctx, "PUT", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/objects/%s", accountID, esc(bucketName), esc(objectOrDirectory)), req, &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) ObjectDelete(ctx context.Context, accountID int64, bucketName, objectOrDirectory string) error {
+	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/objects/%s", accountID, esc(bucketName), esc(objectOrDirectory)), nil, nil)
+}
+
+func (s *ObjectStorageService) ObjectUpload(ctx context.Context, accountID int64, bucketName, directory, filename string, file []byte) (map[string]any, error) {
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	fw, err := w.CreateFormFile("file", filename)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := fw.Write(file); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("/object-storages/accounts/%d/buckets/%s/upload", accountID, esc(bucketName))
+	if directory != "" {
+		path += "?directory=" + url.QueryEscape(directory)
+	}
+	var out map[string]any
+	err = s.client.do(ctx, "POST", path, buf.Bytes(), w.FormDataContentType(), &out)
+	return out, err
+}
+
+func (s *ObjectStorageService) ObjectGenerateURL(ctx context.Context, accountID int64, bucketName, objectName string, req GenerateObjectURLRequest) (map[string]any, error) {
