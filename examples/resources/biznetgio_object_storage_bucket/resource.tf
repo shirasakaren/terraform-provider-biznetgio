@@ -4,3 +4,4 @@ resource "biznetgio_object_storage_bucket" "example" {
   acl        = "private"
 }
 # wip 875
+# wip 904
