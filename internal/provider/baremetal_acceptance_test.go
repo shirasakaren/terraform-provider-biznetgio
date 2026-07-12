@@ -33,3 +33,4 @@ func testAccCheckBaremetalDestroy(s *terraform.State) error {
 		}
 		for _, it := range items {
 			if aliasInt(it, "account_id", "id") == id {
+// wip 928
