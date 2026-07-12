@@ -36,3 +36,4 @@ Read-Only:
 - `name` (String) Nama product (alias name/product_name/label).
 - `product_id` (Number) Product id buat `biznetgio_baremetal.product_id`.
 - `raw` (String, Sensitive) Full JSON product.
+<!-- wip 911 -->
