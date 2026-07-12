@@ -43,3 +43,4 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 terraform import biznetgio_gpu_keypair.example <keypair_id>
 ```
 
+<!-- wip 927 -->
