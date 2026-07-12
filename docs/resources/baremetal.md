@@ -84,3 +84,4 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 ```shell
 terraform import biznetgio_baremetal.main <account_id>
 ```
+
