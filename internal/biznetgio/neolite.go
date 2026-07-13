@@ -43,3 +43,4 @@ type NeoliteSnapshotRequest struct {
 type MigrateToProRequest struct {
 	NeoliteProProductID int64  `json:"neolitepro_product_id"`
 	PayInvoiceWithCC    string `json:"pay_invoice_with_cc,omitempty"`
+// wip 934
