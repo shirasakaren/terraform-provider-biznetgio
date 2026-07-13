@@ -157,3 +157,56 @@ func (d *NeoliteProductsDataSource) Read(ctx context.Context, req datasource.Rea
 	plans, err := d.client.Neolite().ProductList(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list neolite products: %s", err))
+		return
+	}
+
+	data.ID = types.StringValue("neolite-products")
+	for _, p := range plans {
+		model := NeoliteProductModel{
+			ProductID:    types.Int64Value(p.ProductID),
+			Name:         types.StringValue(p.Name),
+			Description:  types.StringValue(p.Description),
+			CategoryID:   types.Int64Value(p.CategoryID),
+			CategoryName: types.StringValue(p.CategoryName),
+			Options: NeoliteProductOptionsModel{
+				Type:           types.StringValue(p.Options.Type),
+				Cores:          types.Int64Value(p.Options.Cores),
+				Memory:         types.Int64Value(p.Options.Memory),
+				AllowDowngrade: types.Int64Value(p.Options.AllowDowngrade),
+			},
+		}
+		for _, b := range p.Billing {
+			bm := NeoliteProductBillingModel{
+				Label: types.StringValue(b.Label),
+				Cycle: types.StringValue(b.Cycle),
+				Price: types.Int64Value(b.Price),
+			}
+			for _, c := range b.Components {
+				cm := NeoliteProductComponentModel{
+					Label: types.StringValue(c.Label),
+					Field: types.StringValue(c.Field),
+				}
+				for _, pr := range c.Prices {
+					cm.Prices = append(cm.Prices, NeoliteProductPriceModel{
+						QtyMin: types.Int64Value(pr.QtyMin),
+						QtyMax: types.Int64Value(pr.QtyMax),
+						Price:  types.Int64Value(pr.Price),
+					})
+				}
+				bm.Components = append(bm.Components, cm)
+			}
+			model.Billing = append(model.Billing, bm)
+		}
+		data.Products = append(data.Products, model)
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- biznetgio_neolite_os_list ----------
+
+type NeoliteOSListDataSource struct {
+	client *biznetgio.Client
+}
+
+type NeoliteOSListDataSourceModel struct {
