@@ -11,3 +11,4 @@ resource "biznetgio_neolite_keypair" "main" {
 # wip 774
 # wip 920
 # wip 985
+# wip 992
