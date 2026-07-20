@@ -1,7 +1,1 @@
-// wip 0
-// wip 286
-// wip 382
-// wip 413
-// wip 449
-// wip 543
-// wip 799
+terraform import biznetgio_object_storage_credential.example <account_id>:<access_key>
