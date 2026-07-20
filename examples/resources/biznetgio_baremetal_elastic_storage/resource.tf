@@ -5,3 +5,4 @@ resource "biznetgio_baremetal_elastic_storage" "main" {
   metal_account_id = 12345
   size             = 100
 }
+# wip 954
