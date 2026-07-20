@@ -41,3 +41,4 @@ Read-Only:
 
 - `access_key` (String, Sensitive) Credential access key.
 - `active` (Boolean) Whether the credential is enabled.
+
