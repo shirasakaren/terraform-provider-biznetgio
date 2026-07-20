@@ -40,3 +40,4 @@ func TestAccObjectStorageResource(t *testing.T) {
 		CheckDestroy:             testAccCheckObjectStorageDestroy,
 		Steps: []resource.TestStep{
 			{
+// wip 968
