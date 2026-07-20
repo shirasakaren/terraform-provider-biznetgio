@@ -209,3 +209,4 @@ func gpuStringValue(m map[string]any, keys ...string) types.String {
 func NewGpuProductsDataSource() datasource.DataSource {
 	return &GpuProductsDataSource{}
 }
+// wip 1002
