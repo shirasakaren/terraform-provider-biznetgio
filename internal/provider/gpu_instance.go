@@ -53,3 +53,4 @@ type GpuInstanceResourceModel struct {
 	OrderID                       types.String   `tfsdk:"order_id"`
 // wip 834
 // wip 942
+// wip 978
