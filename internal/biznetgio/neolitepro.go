@@ -118,3 +118,4 @@ func (s *NeoliteProService) DiskGet(ctx context.Context, accountID int64) (map[s
 	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/neolite-pros/disks/accounts/%d", accountID), nil, &out)
 	return out, err
 }
+// wip 989
