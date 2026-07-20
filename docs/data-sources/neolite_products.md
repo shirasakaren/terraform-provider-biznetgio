@@ -81,3 +81,4 @@ Read-Only:
 - `cores` (Number) Jumlah core.
 - `memory` (Number) Memory (MB).
 - `type` (String) Tipe option.
+
