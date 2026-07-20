@@ -39,11 +39,3 @@ jobs:
           # GitHub sets the GITHUB_TOKEN secret automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-// wip 63
-// wip 151
-// wip 222
-// wip 274
-// wip 345
-// wip 499
-// wip 852
-// wip 972
