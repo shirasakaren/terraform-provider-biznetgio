@@ -60,3 +60,4 @@ func WaitForStatus[T any](
 	}
 	if interval <= 0 {
 		interval = 5 * time.Second
+// wip 995
