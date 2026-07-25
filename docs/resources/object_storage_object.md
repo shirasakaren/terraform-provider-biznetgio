@@ -44,3 +44,4 @@ resource "biznetgio_object_storage_object" "example" {
 
 - `id` (String) Composite id `<account_id>:<bucket>:<key>`.
 - `raw` (String, Sensitive) Full JSON of the last read from the API, for anything not modeled yet.
+<!-- wip 1007 -->
