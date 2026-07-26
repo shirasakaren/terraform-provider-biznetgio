@@ -178,3 +178,4 @@ func (r *NeoliteVMFromSnapshotResource) Create(ctx context.Context, req resource
 	billing, err := r.client.Neolite().SnapshotRestoreWith(ctx, data.SnapshotID.ValueInt64(), biznetgio.NeoliteFromSnapshotRequest{
 		ProductID:         data.ProductID.ValueInt64(),
 		Cycle:             data.Cycle.ValueString(),
+// wip 1020
