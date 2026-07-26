@@ -5,3 +5,4 @@ output "first_product_id" {
 }
 # wip 906
 # wip 949
+# wip 1024
