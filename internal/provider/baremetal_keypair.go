@@ -80,3 +80,44 @@ func (r *BaremetalKeypairResource) Schema(_ context.Context, _ resource.SchemaRe
 func (r *BaremetalKeypairResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *BaremetalKeypairResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data BaremetalKeypairResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var out map[string]any
+	var err error
+	if data.PublicKey.IsNull() || data.PublicKey.ValueString() == "" {
+		out, err = r.client.Baremetal().KeypairCreate(ctx, biznetgio.KeypairCreateRequest{Name: data.Name.ValueString()})
+	} else {
+		out, err = r.client.Baremetal().KeypairImport(ctx, biznetgio.KeypairImportRequest{Name: data.Name.ValueString(), PublicKey: data.PublicKey.ValueString()})
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create baremetal keypair: %s", err))
+		return
+	}
+
+	keypairID := aliasInt(out, "keypair_id", "id")
+	if keypairID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create keypair response tidak ada id: %s", rawJSON(out)))
+		return
+	}
+	data.ID = types.StringValue(strconv.FormatInt(keypairID, 10))
+	data.KeypairID = types.Int64Value(keypairID)
+	if v := aliasStr(out, "public_key", "publickey"); v != "" {
+		data.PublicKey = types.StringValue(v)
+	}
