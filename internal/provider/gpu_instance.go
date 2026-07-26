@@ -316,3 +316,4 @@ func (r *GpuInstanceResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+// wip 1042
