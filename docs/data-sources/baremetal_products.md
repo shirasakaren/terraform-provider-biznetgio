@@ -37,3 +37,4 @@ Read-Only:
 - `product_id` (Number) Product id buat `biznetgio_baremetal.product_id`.
 - `raw` (String, Sensitive) Full JSON product.
 <!-- wip 911 -->
+
