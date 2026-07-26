@@ -158,5 +158,43 @@ func (r *NeoliteDiskResource) Create(ctx context.Context, req resource.CreateReq
 	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-// wip 869
-// wip 975
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !data.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+	out, err := r.client.Neolite().DiskCreate(ctx, biznetgio.NeoliteDiskCreateRequest{
+		ProductID:        data.ProductID.ValueInt64(),
+		Cycle:            data.Cycle.ValueString(),
+		NeoliteAccountID: data.NeoliteAccountID.ValueInt64(),
+		ServiceName:      data.ServiceName.ValueString(),
+		Promocode:        data.Promocode.ValueString(),
+		PayInvoiceWithCC: cc,
+		Size:             data.Size.ValueInt64(),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create neolite disk: %s", err))
+		return
+	}
+	diskID := aliasInt(out, "account_id", "id")
+	if diskID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create neolite disk response tidak ada account_id: %s", rawJSON(out)))
+		return
+	}
+	data.ID = types.StringValue(fmt.Sprintf("%d", diskID))
+	data.OrderID = types.StringValue(aliasStr(out, "order_id", "orderid"))
+	data.Raw = types.StringValue(rawJSON(out))
+
+	tflog.Info(ctx, "neolite disk created, menunggu active", map[string]any{"disk_account_id": diskID})
+	done, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.Neolite().DiskGet(ctx, diskID)
+		},
+		lowerStatus, []string{"active"}, []string{"suspended", "terminated"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite disk %d gagal jadi active: %s", diskID, err))
+		return
