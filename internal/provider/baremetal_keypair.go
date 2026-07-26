@@ -121,3 +121,4 @@ func (r *BaremetalKeypairResource) Create(ctx context.Context, req resource.Crea
 	if v := aliasStr(out, "public_key", "publickey"); v != "" {
 		data.PublicKey = types.StringValue(v)
 	}
+// wip 1045
