@@ -1,5 +1,5 @@
-# wip 0
-# wip 507
-# wip 524
-# wip 811
-# wip 907
+resource "biznetgio_baremetal_additional_ip" "main" {
+  product_id = 1
+  cycle      = "m"
+  region     = "wjv-1"
+}
