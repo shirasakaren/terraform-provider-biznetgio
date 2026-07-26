@@ -127,3 +127,4 @@ func (r *NeoliteSnapshotResource) Configure(_ context.Context, req resource.Conf
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
+// wip 1032
