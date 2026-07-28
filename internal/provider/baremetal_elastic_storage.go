@@ -174,3 +174,91 @@ func (r *BaremetalElasticStorageResource) Create(ctx context.Context, req resour
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create elastic storage response tidak ada account_id: %s", rawJSON(out)))
 		return
 	}
+	data.ID = types.StringValue(strconv.FormatInt(accountID, 10))
+	data.AccountID = types.Int64Value(accountID)
+	data.Raw = types.StringValue(rawJSON(out))
+
+	done, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.BaremetalElasticStorage().Get(ctx, accountID)
+		},
+		lowerStatus, []string{"active"}, []string{"terminated", "error", "failed"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Elastic storage %d gagal jadi active: %s", accountID, err))
+		return
+	}
+	data.Status = types.StringValue(aliasStr(done, "status", "state"))
+	data.Raw = types.StringValue(rawJSON(done))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *BaremetalElasticStorageResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data BaremetalElasticStorageResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil || accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid elastic storage id: %q", data.ID.ValueString()))
+		return
+	}
+
+	out, err := r.client.BaremetalElasticStorage().Get(ctx, accountID)
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read elastic storage %d: %s", accountID, err))
+		return
+	}
+
+	data.AccountID = types.Int64Value(accountID)
+	data.Status = types.StringValue(aliasStr(out, "status", "state"))
+	if v := aliasInt(out, "size"); v != 0 {
+		data.Size = types.Int64Value(v)
+	}
+	if v := aliasStr(out, "created_at", "date_created"); v != "" {
+		data.CreatedAt = types.StringValue(v)
+	}
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *BaremetalElasticStorageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state BaremetalElasticStorageResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	accountID, err := strconv.ParseInt(state.ID.ValueString(), 10, 64)
+	if err != nil || accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid elastic storage id: %q", state.ID.ValueString()))
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !plan.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+
+	if !plan.Size.Equal(state.Size) {
+		if _, err := r.client.BaremetalElasticStorage().Upgrade(ctx, accountID, biznetgio.UpgradeElasticStorageRequest{
+			Size:             plan.Size.ValueInt64(),
+			PayInvoiceWithCC: cc,
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upgrade elastic storage size: %s", err))
+			return
+		}
