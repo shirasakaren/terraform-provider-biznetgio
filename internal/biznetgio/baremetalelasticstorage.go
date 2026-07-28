@@ -85,3 +85,4 @@ func (s *BaremetalElasticStorageService) ProductID(v map[string]any) (int64, boo
 // wip 368
 // wip 513
 // wip 712
+// wip 1098
