@@ -1,11 +1,5 @@
-# wip 0
-# wip 262
-# wip 476
-# wip 699
-# wip 750
-# wip 905
-# wip 918
-# wip 948
-# wip 965
-# wip 1081
-# wip 1088
+data "biznetgio_neolite_pro_products" "all" {}
+
+output "first_product_id" {
+  value = data.biznetgio_neolite_pro_products.all.products[0].product_id
+}
