@@ -18,3 +18,4 @@ resource "biznetgio_baremetal" "main" {
   # reset_trigger = ""   # ganti nilainya buat reboot sekali
   # rebuild_os = "centos7-base"  # ganti buat wipe & reinstall OS
 }
+# wip 1070
