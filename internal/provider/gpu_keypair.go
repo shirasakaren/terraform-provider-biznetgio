@@ -154,3 +154,4 @@ func (r *GpuKeypairResource) Update(ctx context.Context, req resource.UpdateRequ
 
 func (r *GpuKeypairResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data GpuKeypairResourceModel
+// wip 1066
