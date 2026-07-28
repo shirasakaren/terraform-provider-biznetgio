@@ -17,3 +17,4 @@ resource "biznetgio_baremetal_additional_ip_assignment" "main" {
 }
 # wip 567
 # wip 1027
+# wip 1069
