@@ -84,3 +84,4 @@ func (r *NeoliteKeypairResource) Configure(_ context.Context, req resource.Confi
 	r.client = client
 }
 
+// wip 1079
