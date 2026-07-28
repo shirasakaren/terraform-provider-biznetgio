@@ -510,3 +510,4 @@ func (r *NeoliteVMResource) Update(ctx context.Context, req resource.UpdateReque
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+// wip 1095
