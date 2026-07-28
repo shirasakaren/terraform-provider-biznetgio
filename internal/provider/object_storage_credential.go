@@ -162,5 +162,85 @@ func (r *ObjectStorageCredentialResource) Read(ctx context.Context, req resource
 
 	accessKey, ok := objMapString(item, "accessKey", "access_key", "accesskey")
 	if !ok {
-// wip 741
-// wip 756
+		resp.Diagnostics.AddError("Client Error", "Credential item missing access key")
+		return
+	}
+	data.AccessKey = types.StringValue(accessKey)
+	data.ID = types.StringValue(data.AccountID.ValueString() + ":" + objHashKey(accessKey))
+	if v, ok := objMapString(item, "secretKey", "secret_key", "secretkey"); ok {
+		data.SecretKey = types.StringValue(v)
+	}
+	if v, ok := objMapBool(item, "active"); ok {
+		data.Active = types.BoolValue(v)
+	}
+	data.Raw = objRawString(item)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageCredentialResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state ObjectStorageCredentialResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := objParseAccountID(plan.AccountID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid account_id", err.Error())
+		return
+	}
+	accessKey := plan.AccessKey.ValueString()
+	if accessKey == "" {
+		accessKey = state.AccessKey.ValueString()
+	}
+	if accessKey == "" {
+		resp.Diagnostics.AddError("Missing access_key", "Access key tidak ada di state, tidak bisa update credential")
+		return
+	}
+
+	if !plan.Active.Equal(state.Active) {
+		if _, err := r.client.ObjectStorage().CredentialUpdate(ctx, accountID, accessKey, biznetgio.CredentialStatusRequest{
+			Active: plan.Active.ValueBool(),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update credential %q: %s", accessKey, err))
+			return
+		}
+	}
+
+	// secret_key tetap dari state lama, biar gak hilang
+	plan.SecretKey = state.SecretKey
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *ObjectStorageCredentialResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data ObjectStorageCredentialResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, keyForm, err := objParseCredentialID(data.ID.ValueString(), data.AccountID.ValueString(), data.AccessKey.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid credential", err.Error())
+		return
+	}
+
+	accessKey, ok, err := objResolveAccessKey(ctx, r.client, accountID, keyForm, data.AccessKey.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list credentials: %s", err))
+		return
+	}
+	if !ok {
+		resp.Diagnostics.AddError("Invalid credential", "Access key tidak ketemu dari id atau state")
+		return
+	}
+
+	if err := r.client.ObjectStorage().CredentialDelete(ctx, accountID, accessKey); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete credential %q: %s", accessKey, err))
+	}
+}
+
+func (r *ObjectStorageCredentialResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	accountID, accessKey, ok := strings.Cut(req.ID, ":")
+	if !ok || accountID == "" || accessKey == "" {
