@@ -35,3 +35,4 @@ output "options_raw" {
 - `id` (String) Data source id statis.
 - `raw` (String, Sensitive) Full JSON response opsi upgrade storage.
 
+
