@@ -41,3 +41,4 @@ func TestAccObjectStorageResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 // wip 968
+// wip 1074
