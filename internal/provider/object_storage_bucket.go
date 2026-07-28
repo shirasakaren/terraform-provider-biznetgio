@@ -86,3 +86,4 @@ func (r *ObjectStorageBucketResource) Configure(ctx context.Context, req resourc
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
 			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData))
+// wip 1104
