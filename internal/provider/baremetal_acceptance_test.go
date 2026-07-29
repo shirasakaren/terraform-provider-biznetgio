@@ -103,3 +103,4 @@ func TestAccBaremetalKeypair_basic(t *testing.T) {
 					name = "tf-acc-test-key"
 				}`,
 				Check: resource.ComposeAggregateTestCheckFunc(
+// wip 1116
