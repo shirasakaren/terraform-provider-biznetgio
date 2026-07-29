@@ -1,4 +1,8 @@
-# wip 0
-# wip 764
-# wip 796
-# wip 1040
+data "biznetgio_gpu_graph" "main" {
+  account_id = 12345
+  timeframe  = "day"
+}
+
+output "graph" {
+  value = data.biznetgio_gpu_graph.main.graph
+}
