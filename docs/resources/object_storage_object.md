@@ -47,3 +47,4 @@ resource "biznetgio_object_storage_object" "example" {
 <!-- wip 1007 -->
 <!-- wip 1016 -->
 
+<!-- wip 1114 -->
