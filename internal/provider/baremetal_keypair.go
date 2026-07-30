@@ -122,3 +122,4 @@ func (r *BaremetalKeypairResource) Create(ctx context.Context, req resource.Crea
 		data.PublicKey = types.StringValue(v)
 	}
 // wip 1045
+// wip 1135
