@@ -158,3 +158,118 @@ func TestAccNeoliteProVM_basic(t *testing.T) {
 					"cycle",
 					"pay_with_credit_card",
 					"promocode",
+					"power_state",
+					"rebuild_os",
+					"timeouts",
+				},
+			},
+		},
+	})
+}
+
+func TestAccNeoliteProKeypair_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		CheckDestroy:             testAccCheckNeoliteProKeypairDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: `resource "biznetgio_neolite_pro_keypair" "test" {
+					name = "tf-acc-neolite-pro-key"
+				}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_keypair.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_keypair.test", "keypair_id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_keypair.test", "public_key"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_keypair.test", "private_key"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_neolite_pro_keypair.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// private key cuma muncul sekali di response create
+					"private_key",
+				},
+			},
+		},
+	})
+}
+
+func TestAccNeoliteProSnapshot_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		CheckDestroy:             testAccCheckNeoliteProSnapshotDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNeoliteProBaseConfig() + `
+resource "biznetgio_neolite_pro_snapshot" "test" {
+  neolite_account_id = biznetgio_neolite_pro_vm.test.id
+  name               = "tf-acc-snapshot"
+  cycle              = "m"
+}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_snapshot.test", "id"),
+					resource.TestCheckResourceAttr("biznetgio_neolite_pro_snapshot.test", "name", "tf-acc-snapshot"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_snapshot.test", "status"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_neolite_pro_snapshot.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// create-only / ga ada di detail response
+					"neolite_account_id",
+					"cycle",
+					"pay_with_credit_card",
+					"promocode",
+					"timeouts",
+				},
+			},
+		},
+	})
+}
+
+func TestAccNeoliteProDisk_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		CheckDestroy:             testAccCheckNeoliteProDiskDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNeoliteProBaseConfig() + `
+resource "biznetgio_neolite_pro_disk" "test" {
+  product_id         = 30
+  cycle              = "m"
+  neolite_account_id = biznetgio_neolite_pro_vm.test.id
+  service_name       = "tf-acc-disk"
+  size               = 30
+}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_disk.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_disk.test", "order_id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_pro_disk.test", "status"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_neolite_pro_disk.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// create-only / mungkin ga ada di detail response
+					"product_id",
+					"cycle",
+					"neolite_account_id",
+					"service_name",
+					"promocode",
+					"pay_with_credit_card",
+					"size",
+					"timeouts",
+				},
+			},
+		},
+	})
+}
