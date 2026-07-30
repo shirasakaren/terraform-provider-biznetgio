@@ -166,3 +166,45 @@ func TestAccNeoliteVM_basic(t *testing.T) {
 					"pay_with_credit_card",
 					"promocode",
 					"power_state",
+					"rebuild_os",
+					"migrate_to_pro",
+					"timeouts",
+				},
+			},
+		},
+	})
+}
+
+func TestAccNeoliteKeypair_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		CheckDestroy:             testAccCheckNeoliteKeypairDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: `resource "biznetgio_neolite_keypair" "test" {
+					name = "tf-acc-neolite-key"
+				}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_keypair.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_keypair.test", "keypair_id"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_keypair.test", "public_key"),
+					resource.TestCheckResourceAttrSet("biznetgio_neolite_keypair.test", "private_key"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_neolite_keypair.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// private key cuma muncul sekali di response create
+					"private_key",
+				},
+			},
+		},
+	})
+}
+
+func TestAccNeoliteSnapshot_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
