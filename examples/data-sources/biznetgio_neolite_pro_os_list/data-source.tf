@@ -7,3 +7,4 @@ data "biznetgio_neolite_pro_os_list" "this" {
 output "first_os" {
   value = data.biznetgio_neolite_pro_os_list.this.oss[0].name
 }
+# wip 1124
