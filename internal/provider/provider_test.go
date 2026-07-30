@@ -19,3 +19,4 @@ func testAccPreCheck(t *testing.T) {
 		t.Fatal("BIZNETGIO_API_KEY must be set for acceptance tests")
 	}
 }
+// wip 1150
