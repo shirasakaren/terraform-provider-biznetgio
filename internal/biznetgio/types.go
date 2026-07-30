@@ -178,3 +178,4 @@ type SnapshotExtraDetails struct {
 
 type SnapshotResource struct {
 	ID   string `json:"id"` // = snapshot account_id
+// wip 1144
