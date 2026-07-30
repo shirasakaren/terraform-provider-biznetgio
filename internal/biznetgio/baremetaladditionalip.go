@@ -31,36 +31,3 @@ func (s *BaremetalAdditionalIPService) List(ctx context.Context, status string) 
 	var out []map[string]any
 	err := s.client.doJSON(ctx, "GET", "/baremetal-additional-ips"+statusQuery(status), nil, &out)
 	return out, err
-}
-
-func (s *BaremetalAdditionalIPService) Get(ctx context.Context, accountID int64) (map[string]any, error) {
-	var out map[string]any
-	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/baremetal-additional-ips/%d", accountID), nil, &out)
-	return out, err
-}
-
-func (s *BaremetalAdditionalIPService) Delete(ctx context.Context, accountID int64) error {
-	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/baremetal-additional-ips/%d", accountID), nil, nil)
-}
-
-func (s *BaremetalAdditionalIPService) AssignsList(ctx context.Context, accountID int64) ([]map[string]any, error) {
-	var out []map[string]any
-	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/baremetal-additional-ips/%d/assigns", accountID), nil, &out)
-	return out, err
-}
-
-func (s *BaremetalAdditionalIPService) Assign(ctx context.Context, accountID int64, req AssignToMachineRequest) (map[string]any, error) {
-	var out map[string]any
-	err := s.client.doJSON(ctx, "PUT", fmt.Sprintf("/baremetal-additional-ips/%d/assigns", accountID), req, &out)
-	return out, err
-}
-
-func (s *BaremetalAdditionalIPService) AssignGet(ctx context.Context, accountID, metalAccountID int64) (map[string]any, error) {
-	var out map[string]any
-	err := s.client.doJSON(ctx, "GET", fmt.Sprintf("/baremetal-additional-ips/%d/assigns/%d", accountID, metalAccountID), nil, &out)
-	return out, err
-}
-
-func (s *BaremetalAdditionalIPService) Unassign(ctx context.Context, accountID, metalAccountID int64) error {
-	return s.client.doJSON(ctx, "DELETE", fmt.Sprintf("/baremetal-additional-ips/%d/assigns/%d", accountID, metalAccountID), nil, nil)
-}
