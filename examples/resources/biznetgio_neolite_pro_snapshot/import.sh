@@ -1,2 +1,1 @@
-// wip 0
-// wip 990
+terraform import biznetgio_neolite_pro_snapshot.main <snapshot_account_id>
