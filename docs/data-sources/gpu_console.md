@@ -34,3 +34,4 @@ output "console_url" {
 
 - `raw` (String, Sensitive) Full JSON response.
 - `url` (String) URL console (alias url/console_url/access_url/href).
+<!-- wip 1151 -->
