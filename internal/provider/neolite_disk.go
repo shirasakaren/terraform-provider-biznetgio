@@ -198,3 +198,43 @@ func (r *NeoliteDiskResource) Create(ctx context.Context, req resource.CreateReq
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite disk %d gagal jadi active: %s", diskID, err))
 		return
+	}
+	data.Status = types.StringValue(aliasStr(done, "status", "state"))
+	data.Raw = types.StringValue(rawJSON(done))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteDiskResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data NeoliteDiskResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	out, err := r.client.Neolite().DiskGet(ctx, parseAccountID(data.ID.ValueString()))
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read neolite disk %s: %s", data.ID.ValueString(), err))
+		return
+	}
+
+	data.Status = types.StringValue(aliasStr(out, "status", "state"))
+	if v := aliasStr(out, "service_name", "name", "label"); v != "" {
+		data.ServiceName = types.StringValue(v)
+	}
+	if v := aliasInt(out, "size", "disk_size"); v > 0 {
+		data.Size = types.Int64Value(v)
+	}
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteDiskResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state NeoliteDiskResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
