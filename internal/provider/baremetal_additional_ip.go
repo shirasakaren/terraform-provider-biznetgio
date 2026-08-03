@@ -124,5 +124,45 @@ func (r *BaremetalAdditionalIPResource) Configure(_ context.Context, req resourc
 	client, ok := req.ProviderData.(*biznetgio.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
-// wip 845
-// wip 1192
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	r.client = client
+}
+
+func (r *BaremetalAdditionalIPResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data BaremetalAdditionalIPResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !data.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+	out, err := r.client.BaremetalAdditionalIP().Create(ctx, biznetgio.AdditionalIPCreateRequest{
+		ProductID:        data.ProductID.ValueInt64(),
+		Cycle:            data.Cycle.ValueString(),
+		Region:           data.Region.ValueString(),
+		Promocode:        data.Promocode.ValueString(),
+		PayInvoiceWithCC: cc,
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create additional ip: %s", err))
+		return
+	}
+	accountID := aliasInt(out, "account_id", "id")
+	if accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Create additional ip response tidak ada account_id: %s", rawJSON(out)))
+		return
