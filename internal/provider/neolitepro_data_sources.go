@@ -96,4 +96,101 @@ func (d *NeoliteProProductsDataSource) Schema(_ context.Context, _ datasource.Sc
 	}
 }
 
-// wip 1158
+func (d *NeoliteProProductsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+	d.client = client
+}
+
+func (d *NeoliteProProductsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data NeoliteProProductsDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	plans, err := d.client.NeolitePro().ProductList(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list neolite pro products: %s", err))
+		return
+	}
+
+	data.ID = types.StringValue("neolite-pro-products")
+	for _, p := range plans {
+		model := NeoliteProductModel{
+			ProductID:    types.Int64Value(p.ProductID),
+			Name:         types.StringValue(p.Name),
+			Description:  types.StringValue(p.Description),
+			CategoryID:   types.Int64Value(p.CategoryID),
+			CategoryName: types.StringValue(p.CategoryName),
+			Options: NeoliteProductOptionsModel{
+				Type:           types.StringValue(p.Options.Type),
+				Cores:          types.Int64Value(p.Options.Cores),
+				Memory:         types.Int64Value(p.Options.Memory),
+				AllowDowngrade: types.Int64Value(p.Options.AllowDowngrade),
+			},
+		}
+		for _, b := range p.Billing {
+			bm := NeoliteProductBillingModel{
+				Label: types.StringValue(b.Label),
+				Cycle: types.StringValue(b.Cycle),
+				Price: types.Int64Value(b.Price),
+			}
+			for _, c := range b.Components {
+				cm := NeoliteProductComponentModel{
+					Label: types.StringValue(c.Label),
+					Field: types.StringValue(c.Field),
+				}
+				for _, pr := range c.Prices {
+					cm.Prices = append(cm.Prices, NeoliteProductPriceModel{
+						QtyMin: types.Int64Value(pr.QtyMin),
+						QtyMax: types.Int64Value(pr.QtyMax),
+						Price:  types.Int64Value(pr.Price),
+					})
+				}
+				bm.Components = append(bm.Components, cm)
+			}
+			model.Billing = append(model.Billing, bm)
+		}
+		data.Products = append(data.Products, model)
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ---------- biznetgio_neolite_pro_os_list ----------
+
+type NeoliteProOSListDataSource struct {
+	client *biznetgio.Client
+}
+
+type NeoliteProOSListDataSourceModel struct {
+	ID        types.String     `tfsdk:"id"`
+	ProductID types.Int64      `tfsdk:"product_id"`
+	Oss       []NeoliteOSModel `tfsdk:"oss"`
+}
+
+func NewNeoliteProOsListDataSource() datasource.DataSource {
+	return &NeoliteProOSListDataSource{}
+}
+
+func (d *NeoliteProOSListDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_neolite_pro_os_list"
+}
+
+func (d *NeoliteProOSListDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Daftar OS yang tersedia untuk product NEO Lite Pro (pakai buat isi `select_os` di `biznetgio_neolite_pro_vm`).",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Data source id statis.",
