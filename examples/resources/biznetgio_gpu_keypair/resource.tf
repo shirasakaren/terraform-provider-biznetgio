@@ -1,7 +1,5 @@
-# wip 0
-# wip 356
-# wip 497
-# wip 500
-# wip 637
-# wip 740
-# wip 892
+provider "biznetgio" {}
+
+resource "biznetgio_gpu_keypair" "example" {
+  name = "neo-gpu-key"
+}
