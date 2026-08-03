@@ -125,3 +125,4 @@ func (r *BaremetalAdditionalIPResource) Configure(_ context.Context, req resourc
 	if !ok {
 		resp.Diagnostics.AddError(
 // wip 845
+// wip 1192
