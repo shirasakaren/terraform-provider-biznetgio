@@ -43,3 +43,4 @@ type NeoliteVMFromSnapshotResourceModel struct {
 	Status            types.String   `tfsdk:"status"`
 	Timeouts          timeouts.Value `tfsdk:"timeouts"`
 }
+// wip 1204
