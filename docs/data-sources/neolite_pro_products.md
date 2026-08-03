@@ -82,3 +82,4 @@ Read-Only:
 - `memory` (Number) Memory (MB).
 - `type` (String) Tipe option.
 <!-- wip 1134 -->
+<!-- wip 1208 -->
