@@ -374,3 +374,4 @@ func (r *BaremetalResource) ImportState(ctx context.Context, req resource.Import
 // wip 870
 // wip 899
 // wip 1057
+// wip 1175
