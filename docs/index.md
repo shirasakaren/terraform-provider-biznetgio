@@ -24,3 +24,4 @@ provider "biznetgio" {}
 - `base_url` (String) BiznetGIO API base URL. May also be set via BIZNETGIO_BASE_URL env var. Defaults to https://api.portal.biznetgio.com/v1
 - `timeout` (Number) HTTP client timeout in seconds. Defaults to 30.
 <!-- wip 1169 -->
+
