@@ -223,3 +223,4 @@ func (r *NeoliteProDiskResource) Read(ctx context.Context, req resource.ReadRequ
 		data.ServiceName = types.StringValue(v)
 	}
 	if v := aliasInt(out, "size", "disk_size"); v > 0 {
+// wip 1201
