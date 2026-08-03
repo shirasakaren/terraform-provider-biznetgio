@@ -7,3 +7,4 @@ resource "biznetgio_neolite_pro_snapshot" "main" {
 }
 # wip 609
 # wip 1119
+# wip 1172
