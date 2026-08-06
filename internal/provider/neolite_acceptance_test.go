@@ -208,3 +208,4 @@ func TestAccNeoliteKeypair_basic(t *testing.T) {
 func TestAccNeoliteSnapshot_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+// wip 4
