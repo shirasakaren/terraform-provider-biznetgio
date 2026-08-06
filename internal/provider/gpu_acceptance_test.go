@@ -43,3 +43,4 @@ func TestAccGpuInstanceResource(t *testing.T) {
 func TestAccGpuInstanceOnDemandResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+// wip 3
