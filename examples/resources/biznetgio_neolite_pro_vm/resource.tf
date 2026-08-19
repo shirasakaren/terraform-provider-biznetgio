@@ -19,7 +19,7 @@ resource "biznetgio_neolite_pro_vm" "main" {
   cycle                = "m"
 }
 
-# Upgrade disk (absolute target GB — cuma bisa naik):
+# Upgrade disk (absolute target GB - cuma bisa naik):
 # disk_size = 100
 
 # Ganti package: product_id = data.biznetgio_neolite_pro_products.all.products[1].product_id

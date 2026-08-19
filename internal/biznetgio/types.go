@@ -74,7 +74,7 @@ type KeypairResource struct {
 	KeypairID int64  `json:"keypair_id"` // note: NOT `id` on the wire
 	Name      string `json:"name"`
 	PublicKey string `json:"public_key"`
-	// no private key in the documented response — see resources-plan.md note
+	// no private key in the documented response - see resources-plan.md note
 }
 
 func (k *KeypairResource) UnmarshalJSON(b []byte) error {

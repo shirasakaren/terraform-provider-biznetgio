@@ -148,12 +148,12 @@ func (c *Client) unwrap(status int, raw []byte, out any) error {
 	var env envelope
 	if err := json.Unmarshal(raw, &env); err == nil &&
 		len(env.Data) > 0 && string(env.Data) != "null" {
-		// envelope `{success, code, data}` — pake isi data.
+		// envelope `{success, code, data}` - pake isi data.
 		payload = env.Data
 	} else if !json.Valid(raw) {
 		return &APIError{StatusCode: status, Message: fmt.Sprintf("invalid response json: %s", string(raw)), Body: string(raw)}
 	}
-	// list endpoint kadang kirim bare array/object tanpa envelope — decode body utuh.
+	// list endpoint kadang kirim bare array/object tanpa envelope - decode body utuh.
 	if out != nil {
 		dec := json.NewDecoder(bytes.NewReader(payload))
 		dec.UseNumber()

@@ -109,7 +109,7 @@ func (r *BaremetalResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
-				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.",
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar.",
 			},
 			"power_state": schema.StringAttribute{
 				Optional:            true,
@@ -309,7 +309,7 @@ func (r *BaremetalResource) Update(ctx context.Context, req resource.UpdateReque
 		state.Label = plan.Label
 	}
 
-	// power state: on/off — cuma kirim kalau berubah
+	// power state: on/off - cuma kirim kalau berubah
 	if !plan.PowerState.IsUnknown() && !plan.PowerState.Equal(state.PowerState) {
 		ps := plan.PowerState.ValueString()
 		if err := r.client.Baremetal().StateSet(ctx, accountID, ps); err != nil {

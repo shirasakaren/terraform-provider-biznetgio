@@ -250,7 +250,7 @@ func (d *NeoliteOSListDataSource) Schema(_ context.Context, _ datasource.SchemaR
 					Attributes: map[string]schema.Attribute{
 						"vmid":   schema.Int64Attribute{Computed: true, MarkdownDescription: "Id OS template."},
 						"node":   schema.StringAttribute{Computed: true, MarkdownDescription: "Node Proxmox."},
-						"name":   schema.StringAttribute{Computed: true, MarkdownDescription: "Nama OS — isi buat `select_os`."},
+						"name":   schema.StringAttribute{Computed: true, MarkdownDescription: "Nama OS - isi buat `select_os`."},
 						"maxmem": schema.Int64Attribute{Computed: true, MarkdownDescription: "Memory maksimal (MB)."},
 						"maxcpu": schema.Int64Attribute{Computed: true, MarkdownDescription: "CPU maksimal."},
 					},

@@ -148,7 +148,7 @@ func (r *NeoliteProKeypairResource) Read(ctx context.Context, req resource.ReadR
 }
 
 func (r *NeoliteProKeypairResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// semua input RequiresReplace — update ga akan ke-schedule sama framework.
+	// semua input RequiresReplace - update ga akan ke-schedule sama framework.
 	resp.Diagnostics.AddError("Unsupported Update", "neolite_pro_keypair tidak support update; ganti `name` buat recreate.")
 }
 

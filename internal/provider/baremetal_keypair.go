@@ -121,7 +121,7 @@ func (r *BaremetalKeypairResource) Create(ctx context.Context, req resource.Crea
 	if v := aliasStr(out, "public_key", "publickey"); v != "" {
 		data.PublicKey = types.StringValue(v)
 	}
-	// private key cuma di response create — alias defensif, jangan nebak nama
+	// private key cuma di response create - alias defensif, jangan nebak nama
 	if v := aliasStr(out, "private_key", "private", "secret_key", "pem"); v != "" {
 		data.PrivateKey = types.StringValue(v)
 	}
@@ -130,7 +130,7 @@ func (r *BaremetalKeypairResource) Create(ctx context.Context, req resource.Crea
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// Update gak ada endpointnya — semua input RequiresReplace, method ini cuma formalitas interface.
+// Update gak ada endpointnya - semua input RequiresReplace, method ini cuma formalitas interface.
 func (r *BaremetalKeypairResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data BaremetalKeypairResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -176,7 +176,7 @@ func (r *BaremetalKeypairResource) Read(ctx context.Context, req resource.ReadRe
 	if v := aliasStr(found, "public_key", "publickey"); v != "" {
 		data.PublicKey = types.StringValue(v)
 	}
-	// list gak bawa private key — keep value lama
+	// list gak bawa private key - keep value lama
 	data.Raw = types.StringValue(rawJSON(found))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

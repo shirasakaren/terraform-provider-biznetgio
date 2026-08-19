@@ -197,7 +197,7 @@ func (s *NeoliteProService) KeypairCreate(ctx context.Context, req KeypairCreate
 	return &out, nil
 }
 
-// KeypairCreateRaw create keypair, return raw response map — private_key cuma
+// KeypairCreateRaw create keypair, return raw response map - private_key cuma
 // keluar di response ini dan field-nya undocumented, jadi jangan di-decode typed.
 func (s *NeoliteProService) KeypairCreateRaw(ctx context.Context, req KeypairCreateRequest) (map[string]any, error) {
 	var out map[string]any

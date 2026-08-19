@@ -161,7 +161,7 @@ func (r *NeoliteVMResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
-				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar. Bisa diubah in-place via change-package/storage.",
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar. Bisa diubah in-place via change-package/storage.",
 			},
 			"promocode": schema.StringAttribute{
 				Optional:            true,
@@ -186,7 +186,7 @@ func (r *NeoliteVMResource) Schema(ctx context.Context, _ resource.SchemaRequest
 			"disk_size": schema.Int64Attribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Ukuran disk target (GB, absolute — bukan tambahan). Cuma bisa naik, bukan turun.",
+				MarkdownDescription: "Ukuran disk target (GB, absolute - bukan tambahan). Cuma bisa naik, bukan turun.",
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"status": schema.StringAttribute{
@@ -486,7 +486,7 @@ func (r *NeoliteVMResource) Update(ctx context.Context, req resource.UpdateReque
 		needsPoll = true
 	}
 
-	// description ga punya endpoint update — state tetap bawa nilai server dari Read/refresh.
+	// description ga punya endpoint update - state tetap bawa nilai server dari Read/refresh.
 
 	if needsPoll {
 		tflog.Info(ctx, "neolite vm action dikirim, menunggu active", map[string]any{"account_id": state.ID.ValueString()})

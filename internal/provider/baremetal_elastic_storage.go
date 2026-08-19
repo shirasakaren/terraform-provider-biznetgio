@@ -49,7 +49,7 @@ func (r *BaremetalElasticStorageResource) Metadata(_ context.Context, req resour
 
 func (r *BaremetalElasticStorageResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "NEO Elastic Storage — block storage yang ke-bind permanen ke satu baremetal saat create (gak bisa pindah server).",
+		MarkdownDescription: "NEO Elastic Storage - block storage yang ke-bind permanen ke satu baremetal saat create (gak bisa pindah server).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -84,7 +84,7 @@ func (r *BaremetalElasticStorageResource) Schema(ctx context.Context, _ resource
 				Optional:            true,
 				Computed:            true,
 				Default:             int64default.StaticInt64(100),
-				MarkdownDescription: "Ukuran storage dalam GB. Default 100. Kalau berubah, provider panggil upgrade (`PUT .../{account_id}`) — grow-only, set lebih kecil bakal ditolak API.",
+				MarkdownDescription: "Ukuran storage dalam GB. Default 100. Kalau berubah, provider panggil upgrade (`PUT .../{account_id}`) - grow-only, set lebih kecil bakal ditolak API.",
 			},
 			"promocode": schema.StringAttribute{
 				Optional:            true,
@@ -95,7 +95,7 @@ func (r *BaremetalElasticStorageResource) Schema(ctx context.Context, _ resource
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
-				MarkdownDescription: "Bayar invoice pake kartu kredit saat order/upgrade. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.",
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order/upgrade. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar.",
 			},
 			"status": schema.StringAttribute{
 				Computed:            true,

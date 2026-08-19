@@ -86,7 +86,7 @@ func (r *BaremetalAdditionalIPResource) Schema(ctx context.Context, _ resource.S
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
-				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.",
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar.",
 			},
 			"status": schema.StringAttribute{
 				Computed:            true,
@@ -186,7 +186,7 @@ func (r *BaremetalAdditionalIPResource) Create(ctx context.Context, req resource
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// Update gak ada endpointnya — semua input RequiresReplace, method ini cuma formalitas interface.
+// Update gak ada endpointnya - semua input RequiresReplace, method ini cuma formalitas interface.
 func (r *BaremetalAdditionalIPResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data BaremetalAdditionalIPResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)

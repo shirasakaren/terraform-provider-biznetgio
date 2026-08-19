@@ -142,7 +142,7 @@ func (r *GpuKeypairResource) Read(ctx context.Context, req resource.ReadRequest,
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// no update endpoint — semua input RequiresReplace, jadi no-op aja.
+// no update endpoint - semua input RequiresReplace, jadi no-op aja.
 func (r *GpuKeypairResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data GpuKeypairResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)

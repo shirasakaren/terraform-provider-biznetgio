@@ -19,7 +19,7 @@ resource "biznetgio_neolite_vm" "main" {
   cycle                = "m"
 }
 
-# Upgrade disk (absolute target GB — cuma bisa naik):
+# Upgrade disk (absolute target GB - cuma bisa naik):
 # disk_size = 100
 
 # Ganti power: power_state = "stop" (start/stop/suspend/resume/shutdown)

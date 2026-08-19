@@ -124,7 +124,7 @@ func (d *BaremetalRebuildOSListDataSource) Metadata(_ context.Context, req datas
 
 func (d *BaremetalRebuildOSListDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "List OS yang valid buat rebuild (`GET /baremetals/{account_id}/rebuild/oss`) — lebih sempit dari OS list create karena ngikutin layout disk instance.",
+		MarkdownDescription: "List OS yang valid buat rebuild (`GET /baremetals/{account_id}/rebuild/oss`) - lebih sempit dari OS list create karena ngikutin layout disk instance.",
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.Int64Attribute{
 				Required:            true,
@@ -174,7 +174,7 @@ func (d *BaremetalRebuildOSListDataSource) Read(ctx context.Context, req datasou
 
 	var oss []string
 	for _, it := range items {
-		// item bisa object {name: "..."} atau map lain — ambil defensif
+		// item bisa object {name: "..."} atau map lain - ambil defensif
 		if v := aliasStr(it, "name", "os", "label", "value"); v != "" {
 			oss = append(oss, v)
 		}

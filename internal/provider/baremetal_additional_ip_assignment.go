@@ -106,7 +106,7 @@ func (r *BaremetalAdditionalIPAssignmentResource) Create(ctx context.Context, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// Update gak ada endpointnya — semua input RequiresReplace, method ini cuma formalitas interface.
+// Update gak ada endpointnya - semua input RequiresReplace, method ini cuma formalitas interface.
 func (r *BaremetalAdditionalIPAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data BaremetalAdditionalIPAssignmentResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)

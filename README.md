@@ -1,135 +1,133 @@
-# Terraform Provider for BiznetGIO
+<p align="center">
+  <img src="./assets/logo.png" width="88" alt="BiznetGIO logo" />
+</p>
 
-> **Unofficial** community provider by [Shirasaka Ren](https://shirasaka.ren),
-> not affiliated with or endorsed by PT Biznet Gio Nusantara.
+<h1 align="center">Terraform Provider for BiznetGIO</h1>
 
-A [Terraform](https://www.terraform.io) provider for managing
-[BiznetGIO](https://www.biznetgio.com) cloud infrastructure via the
-[BiznetGIO Portal API](https://api.portal.biznetgio.com/v1/docs).
+<p align="center">
+  Manage <a href="https://www.biznetgio.com">BiznetGIO</a> cloud infrastructure - bare metal, VMs, GPUs, object storage - with Terraform.
+</p>
 
-BiznetGIO is an Indonesian cloud provider offering NEO Metal (bare metal
-servers), NEO Lite / NEO Lite Pro (virtual machines), NEO GPU (GPU instances),
-and NEO Object Storage (S3-compatible storage).
+<p align="center">
+  <a href="https://github.com/shirasakaren/terraform-provider-biznetgio/actions/workflows/test.yml"><img src="https://github.com/shirasakaren/terraform-provider-biznetgio/actions/workflows/test.yml/badge.svg" alt="CI"></a>
+  <a href="https://registry.terraform.io/providers/shirasakaren/biznetgio/latest"><img src="https://img.shields.io/badge/terraform%20registry-shirasakaren%2Fbiznetgio-844fba?logo=terraform" alt="Terraform Registry"></a>
+  <a href="https://github.com/shirasakaren/terraform-provider-biznetgio/releases/latest"><img src="https://img.shields.io/github/v/release/shirasakaren/terraform-provider-biznetgio" alt="Latest release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/shirasakaren/terraform-provider-biznetgio" alt="License"></a>
+</p>
 
-Documentation: https://biznetgio.creations.ren
+<p align="center">
+  <a href="https://biznetgio.creations.ren"><img src="https://img.shields.io/badge/docs-biznetgio.creations.ren-008541?style=for-the-badge" alt="Documentation site"></a>
+</p>
 
-## Requirements
+> **Unofficial** community provider maintained by [Shirasaka Ren](https://shirasaka.ren) - not affiliated with or
+> endorsed by PT Biznet Gio Nusantara.
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- A BiznetGIO account with an API token generated from the
-  [customer portal](https://portal.biznetgio.com)
+A [Terraform](https://developer.hashicorp.com/terraform) provider for BiznetGIO, an Indonesian cloud platform,
+built on the [BiznetGIO Portal API](https://api.portal.biznetgio.com/v1/docs). Covers NEO Metal (bare metal),
+NEO Lite / NEO Lite Pro (VMs), NEO GPU, and NEO Object Storage (S3-compatible).
 
-## Authentication
+📖 **Full docs, every resource, and step-by-step guides: [biznetgio.creations.ren](https://biznetgio.creations.ren).**
+New to IaC? Start with [What is Infrastructure as Code?](https://biznetgio.creations.ren/what-is-iac).
 
-The provider authenticates with the `x-token` header. Set the token via the
-`api_key` provider attribute or the `BIZNETGIO_API_KEY` environment variable.
+## Install
+
+The provider is published on the [Terraform Registry](https://registry.terraform.io/providers/shirasakaren/biznetgio/latest):
 
 ```hcl
 terraform {
   required_providers {
     biznetgio = {
-      source  = "registry.terraform.io/shirasakaren/biznetgio"
+      source = "registry.terraform.io/shirasakaren/biznetgio"
     }
   }
 }
+```
 
-provider "biznetgio" {
-  # api_key is also read from BIZNETGIO_API_KEY
-  # base_url is also read from BIZNETGIO_BASE_URL (default: https://api.portal.biznetgio.com/v1)
-}
+Requires Terraform >= 1.0.
 
-# catalog lookup
+## Quickstart
+
+Get an API token from the [portal](https://portal.biznetgio.com) and export it:
+
+```bash
+export BIZNETGIO_API_KEY="<your-token>"
+```
+
+Then order a NEO Lite VM:
+
+```hcl
 data "biznetgio_neolite_products" "plans" {}
-
-# a NEO Lite VM
-resource "biznetgio_neolite_vm" "web" {
-  vm_name         = "web-1"
-  product_id      = data.biznetgio_neolite_products.plans.products[0].product_id
-  select_os       = "Ubuntu 22.04"
-  keypair_id      = biznetgio_neolite_keypair.deploy.id
-  cycle           = "m"
-  # defaults to true: the invoice is paid automatically with the stored card.
-  # set false to keep the order pending until paid manually in the portal.
-  pay_with_credit_card = true
-}
 
 resource "biznetgio_neolite_keypair" "deploy" {
   name = "deploy-key"
 }
+
+resource "biznetgio_neolite_vm" "web" {
+  vm_name                = "web-1"
+  product_id             = data.biznetgio_neolite_products.plans.products[0].product_id
+  select_os              = "Ubuntu 22.04"
+  keypair_id             = biznetgio_neolite_keypair.deploy.id
+  ssh_and_console_user   = "root"
+  console_password       = "change-this-now!"
+  cycle                  = "m"
+  pay_with_credit_card   = true # 💳 bills the card on file, see below
+}
 ```
 
-> **Billing note**: every create/upgrade call places a real order and may
-> charge the credit card on file. Resources created with
-> `pay_with_credit_card = false` stay `Pending` until the invoice is paid in
-> the portal.
+> **💳 Billing note**: `pay_with_credit_card` defaults to `true`, so the first `terraform apply` places a real
+> order and may charge the card on file. Set it to `false` to leave the order pending until you pay in the portal.
 
-## Resources
+## What's covered
 
-| Resource | Description |
-|---|---|
-| `biznetgio_baremetal` | NEO Metal bare metal server (power state, OS rebuild, additional-IP/elastic-storage attach via sub-resources) |
-| `biznetgio_baremetal_keypair` | SSH keypair for NEO Metal |
-| `biznetgio_baremetal_additional_ip` | Additional IP address for NEO Metal |
-| `biznetgio_baremetal_additional_ip_assignment` | Assign an additional IP to a bare metal server |
-| `biznetgio_baremetal_elastic_storage` | NEO Elastic Storage volume attached to a bare metal server |
-| `biznetgio_gpu_instance` | NEO GPU instance (subscription or on-demand billing) |
-| `biznetgio_gpu_keypair` | SSH keypair for NEO GPU |
-| `biznetgio_neolite_vm` | NEO Lite virtual machine |
-| `biznetgio_neolite_keypair` | SSH keypair for NEO Lite |
-| `biznetgio_neolite_snapshot` | NEO Lite VM snapshot |
-| `biznetgio_neolite_vm_from_snapshot` | Restore a NEO Lite VM from a snapshot |
-| `biznetgio_neolite_disk` | Additional disk for NEO Lite |
-| `biznetgio_neolite_pro_vm` | NEO Lite Pro virtual machine |
-| `biznetgio_neolite_pro_keypair` | SSH keypair for NEO Lite Pro |
-| `biznetgio_neolite_pro_snapshot` | NEO Lite Pro VM snapshot |
-| `biznetgio_neolite_pro_disk` | Additional disk for NEO Lite Pro |
-| `biznetgio_object_storage` | NEO Object Storage subscription |
-| `biznetgio_object_storage_bucket` | Bucket in a NEO Object Storage account |
-| `biznetgio_object_storage_credential` | S3 credential (access/secret key) |
-| `biznetgio_object_storage_object` | Thin object upload wrapper - use S3-compatible tooling for bulk data |
+<details>
+<summary><b>Resources</b> (20 total, click to expand)</summary>
 
-## Data Sources
+**NEO Metal**: `biznetgio_baremetal`, `biznetgio_baremetal_keypair`, `biznetgio_baremetal_additional_ip`,
+`biznetgio_baremetal_additional_ip_assignment`, `biznetgio_baremetal_elastic_storage`.
 
-- `biznetgio_baremetal_products` / `_rebuild_os_list` / `_openvpn`
-- `biznetgio_gpu_products` / `_console` / `_graph`
-- `biznetgio_neolite_products` / `_os_list` / `_change_package_options` / `_storage_upgrade_options` / `_ip_availability`
-- `biznetgio_neolite_pro_products` / `_os_list` / `_change_package_options` / `_storage_upgrade_options` / `_ip_availability`
-- `biznetgio_object_storage_instances` / `_buckets` / `_credentials`
+**NEO Lite**: `biznetgio_neolite_vm`, `biznetgio_neolite_keypair`, `biznetgio_neolite_snapshot`,
+`biznetgio_neolite_vm_from_snapshot`, `biznetgio_neolite_disk`.
 
-Every resource also exposes a computed `raw` attribute with the full last-read
-API payload (secrets redacted, marked sensitive) as an escape hatch for fields
-not yet modeled.
+**NEO Lite Pro**: `biznetgio_neolitepro_vm`, `biznetgio_neolitepro_keypair`, `biznetgio_neolitepro_snapshot`,
+`biznetgio_neolitepro_disk`.
 
-## Notes on the BiznetGIO API
+**NEO GPU**: `biznetgio_gpu_instance`, `biznetgio_gpu_keypair`.
 
-- The Portal API does not publish response schemas. Response handling is
-  defensive (case-insensitive alias lookups) and was cross-checked against
-  BiznetGIO's own SDKs and CLI. Report any field mismatch as an issue.
-- Power actions (start/stop/suspend) are declarative via `power_state`; the
-  API is only called when the value changes.
-- One-shot actions (reset, rebuild, reserve GPU hours, migrate-to-pro) are
-  trigger attributes: change the string value to re-fire.
-- Some products (NEO Virtual Compute, NEO Kubernetes, NEO DNS, domains, web
-  hosting, gio-private, gio-enterprise-cloud, gio-backup) are provisioned
-  manually in the portal and have no public API - they are out of scope.
+**NEO Object Storage**: `biznetgio_object_storage`, `biznetgio_object_storage_bucket`,
+`biznetgio_object_storage_credential`, `biznetgio_object_storage_object`.
+
+</details>
+
+<details>
+<summary><b>Data sources</b> (19 total, click to expand)</summary>
+
+Catalog lookups for every service: `biznetgio_neolite_products`, `biznetgio_neolite_os_list`,
+`biznetgio_neolite_change_package_options`, `biznetgio_neolite_storage_upgrade_options`,
+`biznetgio_neolite_ip_availability`, the same five for `neolitepro_*`, `biznetgio_baremetal_products`,
+`biznetgio_baremetal_rebuild_os_list`, `biznetgio_baremetal_openvpn`, `biznetgio_gpu_products`,
+`biznetgio_gpu_console`, `biznetgio_gpu_graph`, `biznetgio_object_storage_instances`,
+`biznetgio_object_storage_buckets`, `biznetgio_object_storage_credentials`.
+
+</details>
+
+## Why this provider
+
+- **Everything the API can do**: 20 resources and 19 data sources across all five public API groups.
+- **Billing-aware**: every create and upgrade is a real paid order; you control auto-payment per resource.
+- **Defensive by design**: the API publishes no response schemas, so every resource also exposes a redacted
+  `raw` output with the full last-read payload, for anything not modeled yet.
+- **Pulumi twin**: prefer general purpose languages? There is a [matching Pulumi provider](https://github.com/shirasakaren/pulumi-biznetgio)
+  with the same resource boundaries.
 
 ## Development
 
 ```sh
-make generate   # regenerate docs/ from schema + examples/ (needs tools/ go generate)
-make testacc    # acceptance tests; requires TF_ACC=1 + BIZNETGIO_API_KEY
+make testacc    # acceptance tests (needs BIZNETGIO_API_KEY and a real account)
+golangci-lint run
 ```
 
-Acceptance tests create real, billable resources. Prefer a sandbox account.
-
-## Publishing
-
-Publishing to the Terraform Registry requires the GitHub repo to be named
-`terraform-provider-biznetgio`, an RSA GPG signing key registered with the
-registry, and a `v*` tag release (see `.goreleaser.yml`). Replace the
-`biznetgio` namespace in `main.go` if you publish under a different GitHub
-organization.
+See the [development guide](https://biznetgio.creations.ren/guides/development) for the full workflow.
 
 ## License
 
-MPL-2.0
+[MPL-2.0](LICENSE)

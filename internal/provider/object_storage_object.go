@@ -48,7 +48,7 @@ func (r *ObjectStorageObjectResource) Metadata(ctx context.Context, req resource
 func (r *ObjectStorageObjectResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Thin convenience wrapper to upload/delete a single object via the BiznetGIO control-plane API. " +
-			"Tidak cocok untuk object besar — untuk scale, pakai tooling S3-compatible langsung dengan credential dari resource credential.",
+			"Tidak cocok untuk object besar - untuk scale, pakai tooling S3-compatible langsung dengan credential dari resource credential.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,

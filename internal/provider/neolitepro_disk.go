@@ -103,7 +103,7 @@ func (r *NeoliteProDiskResource) Schema(ctx context.Context, _ resource.SchemaRe
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
-				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar. Bisa diubah in-place saat upgrade disk.",
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar. Bisa diubah in-place saat upgrade disk.",
 			},
 			"size": schema.Int64Attribute{
 				Optional:            true,

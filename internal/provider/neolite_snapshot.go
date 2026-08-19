@@ -51,7 +51,7 @@ func (r *NeoliteSnapshotResource) Metadata(_ context.Context, req resource.Metad
 
 func (r *NeoliteSnapshotResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Snapshot akun NEO Lite (snapshot bayar per-buatan, punya account id sendiri). Snapshot ga bisa di-update — ganti input = recreate.",
+		MarkdownDescription: "Snapshot akun NEO Lite (snapshot bayar per-buatan, punya account id sendiri). Snapshot ga bisa di-update - ganti input = recreate.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -96,7 +96,7 @@ func (r *NeoliteSnapshotResource) Schema(ctx context.Context, _ resource.SchemaR
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
-				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.",
+				MarkdownDescription: "Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar.",
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			"promocode": schema.StringAttribute{
@@ -223,7 +223,7 @@ func (r *NeoliteSnapshotResource) Read(ctx context.Context, req resource.ReadReq
 }
 
 func (r *NeoliteSnapshotResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// semua input RequiresReplace — update ga akan ke-schedule sama framework.
+	// semua input RequiresReplace - update ga akan ke-schedule sama framework.
 	resp.Diagnostics.AddError("Unsupported Update", "neolite_snapshot tidak support update; ganti input buat recreate.")
 }
 

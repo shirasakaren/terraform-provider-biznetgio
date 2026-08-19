@@ -51,7 +51,7 @@ func (r *ObjectStorageCredentialResource) Schema(ctx context.Context, req resour
 			"id": schema.StringAttribute{
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-				MarkdownDescription: "Composite id `<account_id>:<sha256 hex dari access key, 16 char pertama>` — access key plaintext ga pernah masuk id.",
+				MarkdownDescription: "Composite id `<account_id>:<sha256 hex dari access key, 16 char pertama>` - access key plaintext ga pernah masuk id.",
 			},
 			"account_id": schema.StringAttribute{
 				Required:            true,
@@ -269,7 +269,7 @@ func objFindCredential(ctx context.Context, c *biznetgio.Client, accountID int64
 	return nil, false, nil
 }
 
-// objHashKey sha256 hex access key, ambil 16 char pertama — identitas tanpa plaintext.
+// objHashKey sha256 hex access key, ambil 16 char pertama - identitas tanpa plaintext.
 func objHashKey(accessKey string) string {
 	sum := sha256.Sum256([]byte(accessKey))
 	return hex.EncodeToString(sum[:8])
