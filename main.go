@@ -7,8 +7,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/shirasakaren/terraform-provider-biznetgio/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/provider"
 )
 
 var (

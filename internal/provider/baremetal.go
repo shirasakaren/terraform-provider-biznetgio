@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -19,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 )
 
 type BaremetalResource struct {

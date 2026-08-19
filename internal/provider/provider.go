@@ -7,12 +7,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 )
 
 var _ provider.Provider = &BiznetgioProvider{}

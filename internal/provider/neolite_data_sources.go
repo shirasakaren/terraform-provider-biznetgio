@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 )
 
 // ---------- biznetgio_neolite_products ----------
