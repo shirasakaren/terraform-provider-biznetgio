@@ -44,4 +44,3 @@ Read-Only:
 - `quota` (Number) Quota in GB.
 - `raw` (String, Sensitive) Full JSON of the item.
 - `status` (String) Lifecycle status.
-<!-- wip 815 -->

@@ -8,4 +8,3 @@ resource "biznetgio_object_storage_object" "example" {
   source     = "${path.module}/app.yaml"
   acl        = "private"
 }
-# wip 1183

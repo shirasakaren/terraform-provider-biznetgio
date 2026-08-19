@@ -154,4 +154,38 @@ func (r *GpuKeypairResource) Update(ctx context.Context, req resource.UpdateRequ
 
 func (r *GpuKeypairResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data GpuKeypairResourceModel
-// wip 1066
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	keypairID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("invalid gpu keypair id %q: %s", data.ID.ValueString(), err))
+		return
+	}
+
+	if err := r.client.GPU().KeypairDelete(ctx, keypairID); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("unable to delete gpu keypair %d: %s", keypairID, err))
+	}
+}
+
+func (r *GpuKeypairResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func gpuKeypairSetFromMap(data *GpuKeypairResourceModel, m map[string]any) {
+	if v, ok := gpuString(m, "name"); ok {
+		data.Name = types.StringValue(v)
+	}
+	if v, ok := gpuString(m, "public_key", "pubkey"); ok {
+		data.PublicKey = types.StringValue(v)
+	}
+	if v, ok := gpuString(m, "private_key", "private", "secret_key", "pem"); ok {
+		data.PrivateKey = types.StringValue(v)
+	}
+}
+
+func NewGpuKeypairResource() resource.Resource {
+	return &GpuKeypairResource{}
+}

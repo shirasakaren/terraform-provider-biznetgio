@@ -166,3 +166,85 @@ func (r *NeoliteProSnapshotResource) Create(ctx context.Context, req resource.Cr
 	}
 	data.ID = types.StringValue(billing.AccountID)
 	data.OrderID = types.StringValue(billing.OrderID)
+
+	tflog.Info(ctx, "neolite pro snapshot created, menunggu active", map[string]any{"snapshot_account_id": billing.AccountID})
+	acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (biznetgio.SnapshotAccountResource, error) {
+			return r.client.NeolitePro().AccountSnapshotGet(ctx, parseAccountID(billing.AccountID))
+		},
+		func(a biznetgio.SnapshotAccountResource) string { return strings.ToLower(a.Status) },
+		[]string{"active"}, []string{"suspended", "terminated"})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro snapshot %s gagal jadi active: %s", billing.AccountID, err))
+		return
+	}
+	data.Status = types.StringValue(acc.Status)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteProSnapshotResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data NeoliteProSnapshotResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	list, err := r.client.NeolitePro().AccountSnapshotList(ctx, "")
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list neolite pro snapshots: %s", err))
+		return
+	}
+	var found *biznetgio.SnapshotAccountResource
+	for i := range list {
+		if list[i].AccountID == data.ID.ValueString() {
+			found = &list[i]
+			break
+		}
+	}
+	if found == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	data.Status = types.StringValue(found.Status)
+	if v := found.ExtraDetails.Name; v != "" {
+		data.Name = types.StringValue(v)
+	}
+	if v := found.ExtraDetails.Description; v != "" {
+		data.Description = types.StringValue(v)
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *NeoliteProSnapshotResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// semua input RequiresReplace — update ga akan ke-schedule sama framework.
+	resp.Diagnostics.AddError("Unsupported Update", "neolite_pro_snapshot tidak support update; ganti input buat recreate.")
+}
+
+func (r *NeoliteProSnapshotResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data NeoliteProSnapshotResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, 10*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	err := r.client.NeolitePro().SnapshotDelete(ctx, parseAccountID(data.ID.ValueString()))
+	if err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete neolite pro snapshot %s: %s", data.ID.ValueString(), err))
+		return
+	}
+}
+
+func (r *NeoliteProSnapshotResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}

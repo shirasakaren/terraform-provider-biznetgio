@@ -60,4 +60,32 @@ func WaitForStatus[T any](
 	}
 	if interval <= 0 {
 		interval = 5 * time.Second
-// wip 995
+	}
+	for {
+		v, err := get(ctx)
+		if err != nil {
+			return zero, err
+		}
+		s := status(v)
+		if contains(ready, s) {
+			return v, nil
+		}
+		if contains(failed, s) {
+			return zero, fmt.Errorf("resource reached failed status %q", s)
+		}
+		select {
+		case <-ctx.Done():
+			return zero, ctx.Err()
+		case <-time.After(interval):
+		}
+	}
+}
+
+func contains(xs []string, v string) bool {
+	for _, x := range xs {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}

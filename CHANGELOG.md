@@ -31,4 +31,3 @@ FEATURES:
 * **New Data Source:** `biznetgio_neolite_products`, `biznetgio_neolite_os_list`, `biznetgio_neolite_change_package_options`, `biznetgio_neolite_storage_upgrade_options`, `biznetgio_neolite_ip_availability`
 * **New Data Source:** `biznetgio_neolite_pro_products`, `biznetgio_neolite_pro_os_list`, `biznetgio_neolite_pro_change_package_options`, `biznetgio_neolite_pro_storage_upgrade_options`, `biznetgio_neolite_pro_ip_availability`
 * **New Data Source:** `biznetgio_object_storage_instances`, `biznetgio_object_storage_buckets`, `biznetgio_object_storage_credentials`
-

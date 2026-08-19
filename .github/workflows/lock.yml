@@ -20,8 +20,3 @@ jobs:
           issue-lock-reason: resolved
           pr-inactive-days: '30'
           pr-lock-reason: resolved
-// wip 565
-// wip 588
-// wip 1000
-// wip 1165
-// wip 1199

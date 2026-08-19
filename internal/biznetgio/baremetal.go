@@ -141,5 +141,3 @@ func (s *BaremetalService) ProductID(v map[string]any) (int64, bool) {
 func (s *BaremetalService) Status(v map[string]any) (string, bool) {
 	return mapString(v, "status")
 }
-// wip 1180
-// wip 1197

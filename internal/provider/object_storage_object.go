@@ -238,3 +238,39 @@ func (r *ObjectStorageObjectResource) ImportState(ctx context.Context, req resou
 		resp.Diagnostics.AddError("Invalid Import ID", "Expected `<account_id>:<bucket>:<key>`")
 		return
 	}
+	resp.State.SetAttribute(ctx, tfpath.Root("account_id"), parts[0])
+	resp.State.SetAttribute(ctx, tfpath.Root("bucket"), parts[1])
+	resp.State.SetAttribute(ctx, tfpath.Root("key"), parts[2])
+}
+
+func objObjectBytes(source, content string) ([]byte, error) {
+	if source != "" {
+		return os.ReadFile(source)
+	}
+	return []byte(content), nil
+}
+
+func objSplitKey(key string) (string, string) {
+	dir, name := path.Split(key)
+	return strings.TrimSuffix(dir, "/"), name
+}
+
+func objFindObject(ctx context.Context, c *biznetgio.Client, accountID int64, bucket, key string) (map[string]any, bool, error) {
+	directory, name := objSplitKey(key)
+	var items []map[string]any
+	var err error
+	if directory != "" {
+		items, err = c.ObjectStorage().ObjectsListInDirectory(ctx, accountID, bucket, directory)
+	} else {
+		items, err = c.ObjectStorage().ObjectsList(ctx, accountID, bucket)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	for _, it := range items {
+		if on, ok := objMapString(it, "name", "key", "object_name"); ok && on == name {
+			return it, true, nil
+		}
+	}
+	return nil, false, nil
+}

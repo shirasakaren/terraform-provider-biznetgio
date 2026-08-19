@@ -178,4 +178,47 @@ type SnapshotExtraDetails struct {
 
 type SnapshotResource struct {
 	ID   string `json:"id"` // = snapshot account_id
-// wip 1144
+	Name string `json:"name"`
+}
+
+type KeypairCreateRequest struct {
+	Name string `json:"name"`
+}
+
+type KeypairImportRequest struct {
+	Name      string `json:"name"`
+	PublicKey string `json:"public_key,omitempty"`
+}
+
+func mapInt64(v map[string]any, key string) (int64, bool) {
+	x, ok := v[key]
+	if !ok {
+		return 0, false
+	}
+	switch n := x.(type) {
+	case json.Number:
+		i, err := n.Int64()
+		if err != nil {
+			return 0, false
+		}
+		return i, true
+	case float64:
+		return int64(n), true
+	case string:
+		i, err := strconv.ParseInt(n, 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		return i, true
+	}
+	return 0, false
+}
+
+func mapString(v map[string]any, key string) (string, bool) {
+	x, ok := v[key]
+	if !ok {
+		return "", false
+	}
+	s, ok := x.(string)
+	return s, ok
+}

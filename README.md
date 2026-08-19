@@ -128,9 +128,3 @@ organization.
 ## License
 
 MPL-2.0
-<!-- wip 644 -->
-<!-- wip 903 -->
-<!-- wip 944 -->
-<!-- wip 1102 -->
-<!-- wip 1132 -->
-<!-- wip 1146 -->

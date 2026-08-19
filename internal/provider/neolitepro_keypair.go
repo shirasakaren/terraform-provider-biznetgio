@@ -169,4 +169,3 @@ func (r *NeoliteProKeypairResource) Delete(ctx context.Context, req resource.Del
 func (r *NeoliteProKeypairResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
-// wip 959

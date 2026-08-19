@@ -15,7 +15,3 @@ resource "biznetgio_baremetal_additional_ip_assignment" "main" {
   additional_ip_id = biznetgio_baremetal_additional_ip.main.account_id
   metal_account_id = biznetgio_baremetal.main.account_id
 }
-# wip 567
-# wip 1027
-# wip 1069
-# wip 1164

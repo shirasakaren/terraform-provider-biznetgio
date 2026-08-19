@@ -218,3 +218,91 @@ func (r *BaremetalElasticStorageResource) Read(ctx context.Context, req resource
 	data.AccountID = types.Int64Value(accountID)
 	data.Status = types.StringValue(aliasStr(out, "status", "state"))
 	if v := aliasInt(out, "size"); v != 0 {
+		data.Size = types.Int64Value(v)
+	}
+	if v := aliasStr(out, "created_at", "date_created"); v != "" {
+		data.CreatedAt = types.StringValue(v)
+	}
+	data.Raw = types.StringValue(rawJSON(out))
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *BaremetalElasticStorageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state BaremetalElasticStorageResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	accountID, err := strconv.ParseInt(state.ID.ValueString(), 10, 64)
+	if err != nil || accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid elastic storage id: %q", state.ID.ValueString()))
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	cc := "yes"
+	if !plan.PayWithCreditCard.ValueBool() {
+		cc = "no"
+	}
+
+	if !plan.Size.Equal(state.Size) {
+		if _, err := r.client.BaremetalElasticStorage().Upgrade(ctx, accountID, biznetgio.UpgradeElasticStorageRequest{
+			Size:             plan.Size.ValueInt64(),
+			PayInvoiceWithCC: cc,
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upgrade elastic storage size: %s", err))
+			return
+		}
+	}
+	if !plan.ProductID.Equal(state.ProductID) {
+		if _, err := r.client.BaremetalElasticStorage().ChangePackage(ctx, accountID, biznetgio.ChangeElasticStoragePackageRequest{
+			NewProductID:     plan.ProductID.ValueInt64(),
+			PayInvoiceWithCC: cc,
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change elastic storage package: %s", err))
+			return
+		}
+	}
+
+	if _, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.BaremetalElasticStorage().Get(ctx, accountID)
+		},
+		lowerStatus, []string{"active"}, []string{"terminated", "error", "failed"}); err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Elastic storage %d gagal active setelah update: %s", accountID, err))
+		return
+	}
+
+	plan.ID = state.ID
+	plan.AccountID = state.AccountID
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *BaremetalElasticStorageResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data BaremetalElasticStorageResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil || accountID == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Invalid elastic storage id: %q", data.ID.ValueString()))
+		return
+	}
+	if err := r.client.BaremetalElasticStorage().Delete(ctx, accountID); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete elastic storage %d: %s", accountID, err))
+	}
+}
+
+func (r *BaremetalElasticStorageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}

@@ -43,3 +43,361 @@ type ObjectStorageResourceModel struct {
 	Status            types.String   `tfsdk:"status"`
 	Raw               types.String   `tfsdk:"raw"`
 	Timeouts          timeouts.Value `tfsdk:"timeouts"`
+}
+
+func NewObjectStorageResource() resource.Resource {
+	return &ObjectStorageResource{}
+}
+
+func (r *ObjectStorageResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "biznetgio_object_storage"
+}
+
+func (r *ObjectStorageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Object Storage subscribed instance (the S3-compatible tenant) on BiznetGIO. " +
+			"Create orders the instance; quota can be grown via update. Label, cycle and product are immutable.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Account id of the object storage instance.",
+			},
+			"product_id": schema.Int64Attribute{
+				Required:            true,
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+				MarkdownDescription: "Product/plan id from the object storage catalog.",
+			},
+			"cycle": schema.StringAttribute{
+				Required:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Validators:          []validator.String{stringvalidator.OneOf("m", "a", "q", "s", "b", "t", "p4", "p5")},
+				MarkdownDescription: "Billing cycle: m=monthly, q=quarterly, s=semi-annual, a=annual, b=biennial, t=triennial, p4/p5=4/5-year prepay.",
+			},
+			"label": schema.StringAttribute{
+				Required:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Validators:          []validator.String{stringvalidator.LengthBetween(6, 16), stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9\-_]*$`), "label hanya boleh alphanumeric, dash dan underscore")},
+				MarkdownDescription: "Instance label, 6-16 chars, `[a-zA-Z0-9-_]`. Immutable (no rename endpoint).",
+			},
+			"quota": schema.Int64Attribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             int64default.StaticInt64(10),
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+				Validators:          []validator.Int64{int64validator.AtLeast(10)},
+				MarkdownDescription: "Total quota in GB, minimum 10. Only growable: update sends the delta as add_quota.",
+			},
+			"promocode": schema.StringAttribute{
+				Optional:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				MarkdownDescription: "Promo/discount code applied at order time.",
+			},
+			"pay_with_credit_card": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(true),
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Pay the invoice with the card on file. Set false to leave the invoice unpaid in the portal; the resource stays Pending until paid.",
+			},
+			"order_id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Order id from the create call.",
+			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Lifecycle status: Active, Pending, Suspended or Terminated.",
+			},
+			"raw": schema.StringAttribute{
+				Sensitive:           true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Full JSON of the last read from the API, for anything not modeled yet.",
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *ObjectStorageResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*biznetgio.Client)
+	if !ok {
+		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *biznetgio.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData))
+		return
+	}
+	r.client = client
+}
+
+func (r *ObjectStorageResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data ObjectStorageResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, diags := data.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	pay := "no"
+	if data.PayWithCreditCard.ValueBool() {
+		pay = "yes"
+	}
+
+	created, err := r.client.ObjectStorage().Create(ctx, biznetgio.ObjectStorageCreateRequest{
+		ProductID:        data.ProductID.ValueInt64(),
+		Cycle:            data.Cycle.ValueString(),
+		Label:            data.Label.ValueString(),
+		Quota:            data.Quota.ValueInt64(),
+		Promocode:        data.Promocode.ValueString(),
+		PayInvoiceWithCC: pay,
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create object storage: %s", err))
+		return
+	}
+
+	accountID, ok := objMapInt64(created, "account_id", "id")
+	if !ok {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Object storage create response missing account_id: %s", objRawString(created)))
+		return
+	}
+
+	data.ID = types.StringValue(strconv.FormatInt(accountID, 10))
+	if v, ok := objMapString(created, "order_id"); ok {
+		data.OrderID = types.StringValue(v)
+	}
+
+	acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+		func(ctx context.Context) (map[string]any, error) {
+			return r.client.ObjectStorage().AccountGet(ctx, accountID)
+		},
+		func(m map[string]any) string {
+			v, _ := objMapString(m, "status", "state")
+			return v
+		},
+		[]string{"Active"}, []string{"Terminated", "Suspended", "error"},
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Object Storage Provisioning Failed",
+			fmt.Sprintf("Timed out waiting for object storage %d to become Active: %s", accountID, err))
+		return
+	}
+
+	objSetAccountState(&data, acc)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data ObjectStorageResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	acc, err := r.client.ObjectStorage().AccountGet(ctx, accountID)
+	if err != nil {
+		if biznetgio.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read object storage %d: %s", accountID, err))
+		return
+	}
+
+	if status, _ := objMapString(acc, "status", "state"); status == "Terminated" {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	objSetAccountState(&data, acc)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *ObjectStorageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state ObjectStorageResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	accountID, err := strconv.ParseInt(plan.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Object storage id %q is not numeric", plan.ID.ValueString()))
+		return
+	}
+
+	if !plan.Quota.Equal(state.Quota) {
+		newQuota, oldQuota := plan.Quota.ValueInt64(), state.Quota.ValueInt64()
+		if newQuota < oldQuota {
+			resp.Diagnostics.AddError("Invalid Quota", "Object storage quota hanya bisa diperbesar, bukan diperkecil")
+			return
+		}
+		pay := "no"
+		if plan.PayWithCreditCard.ValueBool() {
+			pay = "yes"
+		}
+		if _, err := r.client.ObjectStorage().QuotaUpgrade(ctx, accountID, biznetgio.ObjectStorageQuotaUpgradeRequest{
+			AddQuota:         newQuota - oldQuota,
+			PayInvoiceWithCC: pay,
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to upgrade object storage %d quota: %s", accountID, err))
+			return
+		}
+		acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+			func(ctx context.Context) (map[string]any, error) {
+				return r.client.ObjectStorage().AccountGet(ctx, accountID)
+			},
+			func(m map[string]any) string {
+				v, _ := objMapString(m, "status", "state")
+				return v
+			},
+			[]string{"Active"}, []string{"Terminated", "Suspended", "error"},
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Object Storage Upgrade Failed",
+				fmt.Sprintf("Timed out waiting for object storage %d after quota upgrade: %s", accountID, err))
+			return
+		}
+		objSetAccountState(&plan, acc)
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *ObjectStorageResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data ObjectStorageResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, 10*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	accountID, err := strconv.ParseInt(data.ID.ValueString(), 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Object storage id %q is not numeric", data.ID.ValueString()))
+		return
+	}
+
+	if err := r.client.ObjectStorage().Delete(ctx, accountID); err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete object storage %d: %s", accountID, err))
+	}
+}
+
+func (r *ObjectStorageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func objSetAccountState(data *ObjectStorageResourceModel, acc map[string]any) {
+	if v, ok := objMapString(acc, "status", "state"); ok {
+		data.Status = types.StringValue(v)
+	}
+	if v, ok := objMapString(acc, "label", "name"); ok {
+		data.Label = types.StringValue(v)
+	}
+	if v, ok := objMapString(acc, "order_id"); ok {
+		data.OrderID = types.StringValue(v)
+	}
+	if v, ok := objMapInt64(acc, "quota"); ok {
+		data.Quota = types.Int64Value(v)
+	}
+	if v, ok := objMapInt64(acc, "product_id"); ok {
+		data.ProductID = types.Int64Value(v)
+	}
+	if v, ok := objMapString(acc, "cycle"); ok {
+		data.Cycle = types.StringValue(v)
+	}
+	data.Raw = objRawString(acc)
+}
+
+func objMapString(v map[string]any, keys ...string) (string, bool) {
+	for _, k := range keys {
+		if s, ok := v[k].(string); ok && s != "" {
+			return s, true
+		}
+	}
+	return "", false
+}
+
+func objMapInt64(v map[string]any, keys ...string) (int64, bool) {
+	for _, k := range keys {
+		x, ok := v[k]
+		if !ok {
+			continue
+		}
+		switch n := x.(type) {
+		case json.Number:
+			if i, err := n.Int64(); err == nil {
+				return i, true
+			}
+		case float64:
+			return int64(n), true
+		case string:
+			if i, err := strconv.ParseInt(n, 10, 64); err == nil {
+				return i, true
+			}
+		}
+	}
+	return 0, false
+}
+
+func objMapBool(v map[string]any, keys ...string) (bool, bool) {
+	for _, k := range keys {
+		if b, ok := v[k].(bool); ok {
+			return b, true
+		}
+		if s, ok := v[k].(string); ok {
+			if b, err := strconv.ParseBool(s); err == nil {
+				return b, true
+			}
+		}
+	}
+	return false, false
+}
+
+func objRawString(v map[string]any) types.String {
+	if v == nil {
+		return types.StringNull()
+	}
+	b := redactJSON(v)
+	if b == nil {
+		return types.StringNull()
+	}
+	return types.StringValue(string(b))
+}

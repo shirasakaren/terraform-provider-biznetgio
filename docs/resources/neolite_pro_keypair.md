@@ -48,6 +48,3 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 ```shell
 terraform import biznetgio_neolite_pro_keypair.main <keypair_id>
 ```
-
-<!-- wip 1097 -->
-<!-- wip 1205 -->

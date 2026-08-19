@@ -7,4 +7,3 @@ data "biznetgio_neolite_os_list" "this" {
 output "os_names" {
   value = [for os in data.biznetgio_neolite_os_list.this.oss : os.name]
 }
-# wip 780

@@ -7,12 +7,3 @@ The document generation tool looks for files in the following locations by defau
 * **provider/provider.tf** example file for the provider index page
 * **data-sources/`full data source name`/data-source.tf** example file for the named data source page
 * **resources/`full resource name`/resource.tf** example file for the named data source page
-<!-- wip 194 -->
-<!-- wip 299 -->
-<!-- wip 307 -->
-
-<!-- wip 445 -->
-<!-- wip 467 -->
-
-
-<!-- wip 844 -->

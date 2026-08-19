@@ -6,5 +6,3 @@ data "biznetgio_object_storage_credentials" "example" {
 output "access_keys" {
   value = [for c in data.biznetgio_object_storage_credentials.example.credentials : c.access_key]
 }
-# wip 411
-# wip 917

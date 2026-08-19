@@ -244,3 +244,82 @@ func (r *ObjectStorageCredentialResource) Delete(ctx context.Context, req resour
 func (r *ObjectStorageCredentialResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	accountID, accessKey, ok := strings.Cut(req.ID, ":")
 	if !ok || accountID == "" || accessKey == "" {
+		resp.Diagnostics.AddError("Invalid Import ID", "Expected `<account_id>:<access_key>`")
+		return
+	}
+	resp.State.SetAttribute(ctx, path.Root("account_id"), accountID)
+	resp.State.SetAttribute(ctx, path.Root("access_key"), accessKey)
+}
+
+func objFindCredential(ctx context.Context, c *biznetgio.Client, accountID int64, keyForm string) (map[string]any, bool, error) {
+	items, err := c.ObjectStorage().CredentialsList(ctx, accountID)
+	if err != nil {
+		return nil, false, err
+	}
+	hashMode := objIsHex16(keyForm)
+	for _, it := range items {
+		ak, ok := objMapString(it, "accessKey", "access_key", "accesskey")
+		if !ok {
+			continue
+		}
+		if (hashMode && objHashKey(ak) == keyForm) || (!hashMode && ak == keyForm) {
+			return it, true, nil
+		}
+	}
+	return nil, false, nil
+}
+
+// objHashKey sha256 hex access key, ambil 16 char pertama — identitas tanpa plaintext.
+func objHashKey(accessKey string) string {
+	sum := sha256.Sum256([]byte(accessKey))
+	return hex.EncodeToString(sum[:8])
+}
+
+// objIsHex16 cek format suffix id: 16 char lowercase hex (hash) vs literal access key.
+func objIsHex16(s string) bool {
+	if len(s) != 16 {
+		return false
+	}
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// objResolveAccessKey ubah keyForm (hash/literal) jadi access key plaintext buat panggil API.
+func objResolveAccessKey(ctx context.Context, c *biznetgio.Client, accountID int64, keyForm, fallback string) (string, bool, error) {
+	if !objIsHex16(keyForm) {
+		return keyForm, keyForm != "", nil
+	}
+	items, err := c.ObjectStorage().CredentialsList(ctx, accountID)
+	if err != nil {
+		return "", false, err
+	}
+	for _, it := range items {
+		if ak, ok := objMapString(it, "accessKey", "access_key", "accesskey"); ok && objHashKey(ak) == keyForm {
+			return ak, true, nil
+		}
+	}
+	if fallback != "" {
+		return fallback, true, nil
+	}
+	return "", false, nil
+}
+
+func objParseCredentialID(id, accountID, accessKey string) (int64, string, error) {
+	if id != "" {
+		if a, k, ok := strings.Cut(id, ":"); ok && a != "" && k != "" {
+			accountID, accessKey = a, k
+		}
+	}
+	acc, err := objParseAccountID(accountID)
+	if err != nil {
+		return 0, "", err
+	}
+	if accessKey == "" {
+		return 0, "", fmt.Errorf("access key kosong")
+	}
+	return acc, accessKey, nil
+}

@@ -370,9 +370,3 @@ func (r *BaremetalResource) Delete(ctx context.Context, req resource.DeleteReque
 func (r *BaremetalResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
-// wip 706
-// wip 870
-// wip 899
-// wip 1057
-// wip 1175
-// wip 2

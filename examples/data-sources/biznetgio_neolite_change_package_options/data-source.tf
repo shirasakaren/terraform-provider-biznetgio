@@ -6,6 +6,3 @@ data "biznetgio_neolite_change_package_options" "this" {
 output "options_raw" {
   value = data.biznetgio_neolite_change_package_options.this.raw
 }
-# wip 633
-# wip 837
-# wip 1075

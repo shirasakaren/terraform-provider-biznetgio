@@ -397,3 +397,165 @@ func (r *NeoliteProVmResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 	if !plan.KeypairID.Equal(state.KeypairID) {
 		if err := r.client.NeolitePro().VMChangeKeypair(ctx, accountID, plan.KeypairID.ValueInt64()); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change neolite pro vm keypair: %s", err))
+			return
+		}
+		state.KeypairID = plan.KeypairID
+	}
+
+	needsPoll := false
+	if !plan.ProductID.Equal(state.ProductID) {
+		if _, err := r.client.NeolitePro().VMChangePackage(ctx, accountID, biznetgio.NeoliteChangePackageRequest{
+			NewProductID:     plan.ProductID.ValueInt64(),
+			PayInvoiceWithCC: ccYesNo(plan.PayWithCreditCard),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change neolite pro vm package: %s", err))
+			return
+		}
+		state.ProductID = plan.ProductID
+		needsPoll = true
+	}
+	if !plan.DiskSize.Equal(state.DiskSize) {
+		newSize := plan.DiskSize.ValueInt64()
+		oldSize := state.DiskSize.ValueInt64()
+		if newSize < oldSize {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro vm storage cuma bisa di-upgrade: %d -> %d", oldSize, newSize))
+			return
+		}
+		if _, err := r.client.NeolitePro().VMChangeStorage(ctx, accountID, biznetgio.NeoliteUpgradeStorageRequest{
+			DiskSize:         newSize,
+			PayInvoiceWithCC: ccYesNo(plan.PayWithCreditCard),
+		}); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to change neolite pro vm storage: %s", err))
+			return
+		}
+		state.DiskSize = plan.DiskSize
+		needsPoll = true
+	}
+	if !plan.PowerState.IsUnknown() && !plan.PowerState.Equal(state.PowerState) {
+		ps := plan.PowerState.ValueString()
+		if err := r.client.NeolitePro().VMState(ctx, accountID, ps); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set neolite pro vm power state %q: %s", ps, err))
+			return
+		}
+		state.PowerState = plan.PowerState
+	}
+	if !plan.RebuildOS.IsUnknown() && !plan.RebuildOS.Equal(state.RebuildOS) {
+		if err := r.client.NeolitePro().VMRebuild(ctx, accountID, plan.RebuildOS.ValueString()); err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to rebuild neolite pro vm: %s", err))
+			return
+		}
+		state.RebuildOS = plan.RebuildOS
+		needsPoll = true
+	}
+
+	// description ga punya endpoint update — state tetap bawa nilai server dari Read/refresh.
+
+	if needsPoll {
+		tflog.Info(ctx, "neolite pro vm action dikirim, menunggu active", map[string]any{"account_id": state.ID.ValueString()})
+		acc, err := biznetgio.WaitForStatus(ctx, 5*time.Second,
+			func(ctx context.Context) (biznetgio.AccountResource, error) {
+				return r.client.NeolitePro().AccountGet(ctx, accountID)
+			},
+			accountStatus, []string{"active"}, []string{"suspended", "terminated"})
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Neolite pro vm %s gagal balik active: %s", state.ID.ValueString(), err))
+			return
+		}
+		state.Status = types.StringValue(acc.Status)
+	}
+
+	if err := r.refresh(ctx, &state); err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read neolite pro vm %s: %s", state.ID.ValueString(), err))
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *NeoliteProVmResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data NeoliteProVmResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, 10*time.Minute)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	err := r.client.NeolitePro().VMDelete(ctx, parseAccountID(data.ID.ValueString()))
+	if err != nil && !biznetgio.IsNotFound(err) {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete neolite pro vm %s: %s", data.ID.ValueString(), err))
+		return
+	}
+}
+
+func (r *NeoliteProVmResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// refresh isi semua computed field dari AccountGet + VMDetails.
+func (r *NeoliteProVmResource) refresh(ctx context.Context, data *NeoliteProVmResourceModel) error {
+	accountID := parseAccountID(data.ID.ValueString())
+
+	acc, err := r.client.NeolitePro().AccountGet(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	data.Status = types.StringValue(acc.Status)
+	data.BillingCycle = types.StringValue(acc.Billingcycle)
+	data.NextDue = types.StringValue(acc.NextDue)
+	data.RecurringAmount = types.Int64Value(acc.RecurringAmount)
+	data.ProductID = types.Int64Value(acc.ProductID)
+	data.ProductName = types.StringValue(acc.ProductName)
+	data.Description = types.StringValue(acc.Description)
+	data.Region = types.StringValue(acc.ExtraDetails.Region)
+	data.RegionLabel = types.StringValue(acc.ExtraDetails.RegionLabel)
+	data.CIUser = types.StringValue(acc.ExtraDetails.CIUser)
+	data.CIPassword = types.StringValue(acc.ExtraDetails.CIPassword)
+	data.OSName = types.StringValue(acc.ExtraDetails.OSName)
+	if acc.ExtraDetails.KeypairID != 0 {
+		data.KeypairID = types.Int64Value(acc.ExtraDetails.KeypairID)
+	}
+	if v := acc.ExtraDetails.DiskSize; v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			data.DiskSize = types.Int64Value(n)
+		}
+	}
+	if v := acc.ExtraDetails.Name; v != "" {
+		data.VMName = types.StringValue(v)
+	}
+	data.LastInvoice = NeoliteLastInvoiceModel{
+		ID:          types.Int64Value(acc.LastInvoice.ID),
+		PaidID:      types.Int64Value(acc.LastInvoice.PaidID),
+		Status:      types.StringValue(acc.LastInvoice.Status),
+		Date:        types.StringValue(acc.LastInvoice.Date),
+		Duedate:     types.StringValue(acc.LastInvoice.Duedate),
+		Paybefore:   types.StringValue(acc.LastInvoice.Paybefore),
+		Datepaid:    types.StringValue(acc.LastInvoice.Datepaid),
+		InvoiceType: types.StringValue(acc.LastInvoice.InvoiceType),
+	}
+
+	// vm-details: kalau gagal (VM lagi down/ke-terminate), keep nilai lama.
+	if vm, err := r.client.NeolitePro().VMDetails(ctx, accountID); err == nil {
+		data.Uptime = types.Int64Value(vm.Uptime)
+		data.MaxDisk = types.Int64Value(vm.MaxDisk)
+		data.MaxMem = types.Int64Value(vm.MaxMem)
+		data.Mem = types.Int64Value(vm.Mem)
+		data.CPUs = types.Int64Value(vm.CPUs)
+	}
+
+	if b, err := json.Marshal(acc); err == nil {
+		var m map[string]any
+		if json.Unmarshal(b, &m) == nil {
+			data.Raw = types.StringValue(string(redactJSON(m)))
+		}
+	}
+	return nil
+}

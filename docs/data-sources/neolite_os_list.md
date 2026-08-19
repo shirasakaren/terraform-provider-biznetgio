@@ -46,6 +46,3 @@ Read-Only:
 - `name` (String) Nama OS — isi buat `select_os`.
 - `node` (String) Node Proxmox.
 - `vmid` (Number) Id OS template.
-
-<!-- wip 506 -->
-<!-- wip 806 -->

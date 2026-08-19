@@ -19,9 +19,3 @@ jobs:
     steps:
       - name: 'Remove waiting-response on comment'
         run: gh ${{ env.COMMAND }} edit ${{ github.event.issue.html_url }} --remove-label waiting-response
-// wip 326
-// wip 339
-// wip 831
-// wip 987
-// wip 1125
-// wip 1152

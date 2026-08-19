@@ -103,4 +103,38 @@ func TestAccBaremetalKeypair_basic(t *testing.T) {
 					name = "tf-acc-test-key"
 				}`,
 				Check: resource.ComposeAggregateTestCheckFunc(
-// wip 1116
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal_keypair.test", "id"),
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal_keypair.test", "keypair_id"),
+					resource.TestCheckResourceAttrSet("biznetgio_baremetal_keypair.test", "public_key"),
+				),
+			},
+			{
+				ResourceName:      "biznetgio_baremetal_keypair.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// private key cuma muncul sekali di response create, gak bisa di-refresh
+					"private_key",
+				},
+			},
+		},
+	})
+}
+
+func testAccBaremetalConfig(label string) string {
+	return fmt.Sprintf(`
+data "biznetgio_baremetal_products" "all" {}
+
+resource "biznetgio_baremetal_keypair" "test" {
+	name = "tf-acc-test-key"
+}
+
+resource "biznetgio_baremetal" "test" {
+	product_id = data.biznetgio_baremetal_products.all.products[0].product_id
+	cycle      = "m"
+	label      = %q
+	keypair_id = biznetgio_baremetal_keypair.test.keypair_id
+	public_ip  = 1
+}
+`, label)
+}

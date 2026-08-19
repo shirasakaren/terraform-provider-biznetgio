@@ -58,4 +58,3 @@ func rawJSON(v map[string]any) string {
 func lowerStatus(v map[string]any) string {
 	return strings.ToLower(aliasStr(v, "status", "state"))
 }
-// wip 884

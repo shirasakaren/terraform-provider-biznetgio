@@ -59,5 +59,3 @@ formatters:
       - third_party$
       - builtin$
       - examples$
-// wip 950
-// wip 1157

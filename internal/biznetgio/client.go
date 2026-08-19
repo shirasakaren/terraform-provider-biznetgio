@@ -150,3 +150,41 @@ func (c *Client) unwrap(status int, raw []byte, out any) error {
 		len(env.Data) > 0 && string(env.Data) != "null" {
 		// envelope `{success, code, data}` — pake isi data.
 		payload = env.Data
+	} else if !json.Valid(raw) {
+		return &APIError{StatusCode: status, Message: fmt.Sprintf("invalid response json: %s", string(raw)), Body: string(raw)}
+	}
+	// list endpoint kadang kirim bare array/object tanpa envelope — decode body utuh.
+	if out != nil {
+		dec := json.NewDecoder(bytes.NewReader(payload))
+		dec.UseNumber()
+		if err := dec.Decode(out); err != nil {
+			return &APIError{StatusCode: status, Code: env.Code, Message: fmt.Sprintf("decode data: %v", err), Body: string(raw)}
+		}
+	}
+	return nil
+}
+
+func newAPIError(status int, raw []byte) error {
+	e := &APIError{StatusCode: status, Body: string(raw)}
+	var env envelope
+	if json.Unmarshal(raw, &env) == nil {
+		e.Code = env.Code
+	}
+	if len(raw) > 0 {
+		e.Message = string(raw)
+	} else {
+		e.Message = fmt.Sprintf("request failed with status %d", status)
+	}
+	return e
+}
+
+func esc(s string) string {
+	return url.PathEscape(s)
+}
+
+func statusQuery(status string) string {
+	if status == "" {
+		return ""
+	}
+	return "?status=" + url.QueryEscape(status)
+}

@@ -41,4 +41,3 @@ Read-Only:
 - `acl` (String) Canned ACL.
 - `name` (String) Bucket name.
 - `raw` (String, Sensitive) Full JSON of the item.
-<!-- wip 893 -->
