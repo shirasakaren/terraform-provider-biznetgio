@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/biznetgio/terraform-provider-biznetgio/internal/biznetgio"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"

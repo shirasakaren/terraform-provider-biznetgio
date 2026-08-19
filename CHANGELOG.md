@@ -6,7 +6,7 @@ BREAKING CHANGES:
 
 FEATURES:
 
-* **New Resource:** `biznetgio_baremetal` ([#1](https://github.com/biznetgio/terraform-provider-biznetgio/issues/1))
+* **New Resource:** `biznetgio_baremetal` ([#1](https://github.com/shirasakaren/terraform-provider-biznetgio/issues/1))
 * **New Resource:** `biznetgio_baremetal_keypair`
 * **New Resource:** `biznetgio_baremetal_additional_ip`
 * **New Resource:** `biznetgio_baremetal_additional_ip_assignment`

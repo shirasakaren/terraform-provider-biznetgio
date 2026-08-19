@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/biznetgio/terraform-provider-biznetgio/internal/biznetgio"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	tfpath "github.com/hashicorp/terraform-plugin-framework/path"

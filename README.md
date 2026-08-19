@@ -1,5 +1,8 @@
 # Terraform Provider for BiznetGIO
 
+> **Unofficial** community provider by [Shirasaka Ren](https://shirasaka.ren),
+> not affiliated with or endorsed by PT Biznet Gio Nusantara.
+
 A [Terraform](https://www.terraform.io) provider for managing
 [BiznetGIO](https://www.biznetgio.com) cloud infrastructure via the
 [BiznetGIO Portal API](https://api.portal.biznetgio.com/v1/docs).
@@ -7,6 +10,8 @@ A [Terraform](https://www.terraform.io) provider for managing
 BiznetGIO is an Indonesian cloud provider offering NEO Metal (bare metal
 servers), NEO Lite / NEO Lite Pro (virtual machines), NEO GPU (GPU instances),
 and NEO Object Storage (S3-compatible storage).
+
+Documentation: https://biznetgio.creations.ren
 
 ## Requirements
 
@@ -23,7 +28,7 @@ The provider authenticates with the `x-token` header. Set the token via the
 terraform {
   required_providers {
     biznetgio = {
-      source  = "registry.terraform.io/biznetgio/biznetgio"
+      source  = "registry.terraform.io/shirasakaren/biznetgio"
     }
   }
 }

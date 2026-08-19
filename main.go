@@ -7,7 +7,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/biznetgio/terraform-provider-biznetgio/internal/provider"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/biznetgio/biznetgio",
+		Address: "registry.terraform.io/shirasakaren/biznetgio",
 		Debug:   debug,
 	}
 

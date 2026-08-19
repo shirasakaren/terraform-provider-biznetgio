@@ -1,4 +1,4 @@
-module github.com/biznetgio/terraform-provider-biznetgio
+module github.com/shirasakaren/terraform-provider-biznetgio
 
 go 1.25.8
 

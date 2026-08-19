@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/biznetgio/terraform-provider-biznetgio/internal/biznetgio"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/biznetgio/terraform-provider-biznetgio/internal/biznetgio"
+	"github.com/shirasakaren/terraform-provider-biznetgio/internal/biznetgio"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
