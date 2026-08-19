@@ -86,7 +86,7 @@ resource "biznetgio_neolite_keypair" "deploy" {
 | `biznetgio_object_storage` | NEO Object Storage subscription |
 | `biznetgio_object_storage_bucket` | Bucket in a NEO Object Storage account |
 | `biznetgio_object_storage_credential` | S3 credential (access/secret key) |
-| `biznetgio_object_storage_object` | Thin object upload wrapper — use S3-compatible tooling for bulk data |
+| `biznetgio_object_storage_object` | Thin object upload wrapper - use S3-compatible tooling for bulk data |
 
 ## Data Sources
 
@@ -111,7 +111,7 @@ not yet modeled.
   trigger attributes: change the string value to re-fire.
 - Some products (NEO Virtual Compute, NEO Kubernetes, NEO DNS, domains, web
   hosting, gio-private, gio-enterprise-cloud, gio-backup) are provisioned
-  manually in the portal and have no public API — they are out of scope.
+  manually in the portal and have no public API - they are out of scope.
 
 ## Development
 

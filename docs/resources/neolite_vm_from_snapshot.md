@@ -63,7 +63,7 @@ resource "biznetgio_neolite_vm_from_snapshot" "restored" {
 ### Optional
 
 - `description` (String) Deskripsi VM.
-- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.
+- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar.
 - `promocode` (String) Kode promo saat order.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

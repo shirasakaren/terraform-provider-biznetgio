@@ -34,7 +34,7 @@ resource "biznetgio_object_storage_credential" "example" {
 ### Read-Only
 
 - `access_key` (String, Sensitive) Credential access key, returned once at create.
-- `id` (String) Composite id `<account_id>:<sha256 hex dari access key, 16 char pertama>` — access key plaintext ga pernah masuk id.
+- `id` (String) Composite id `<account_id>:<sha256 hex dari access key, 16 char pertama>` - access key plaintext ga pernah masuk id.
 - `raw` (String, Sensitive) Full JSON of the last read from the API, for anything not modeled yet.
 - `secret_key` (String, Sensitive) Credential secret key, shown only once at create; keeps its last state value on refresh.
 

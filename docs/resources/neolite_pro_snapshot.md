@@ -3,12 +3,12 @@
 page_title: "biznetgio_neolite_pro_snapshot Resource - biznetgio"
 subcategory: ""
 description: |-
-  Snapshot akun NEO Lite Pro (snapshot bayar per-buatan, punya account id sendiri). Snapshot ga bisa di-update — ganti input = recreate.
+  Snapshot akun NEO Lite Pro (snapshot bayar per-buatan, punya account id sendiri). Snapshot ga bisa di-update - ganti input = recreate.
 ---
 
 # biznetgio_neolite_pro_snapshot (Resource)
 
-Snapshot akun NEO Lite Pro (snapshot bayar per-buatan, punya account id sendiri). Snapshot ga bisa di-update — ganti input = recreate.
+Snapshot akun NEO Lite Pro (snapshot bayar per-buatan, punya account id sendiri). Snapshot ga bisa di-update - ganti input = recreate.
 
 ## Example Usage
 
@@ -34,7 +34,7 @@ resource "biznetgio_neolite_pro_snapshot" "main" {
 
 - `description` (String) Deskripsi snapshot.
 - `name` (String) Nama snapshot. Default `snapshot-name`. Panjang 6-16, hanya huruf/angka/titik/dash.
-- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.
+- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar.
 - `promocode` (String) Kode promo saat order.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

@@ -3,12 +3,12 @@
 page_title: "biznetgio_baremetal_elastic_storage Resource - biznetgio"
 subcategory: ""
 description: |-
-  NEO Elastic Storage — block storage yang ke-bind permanen ke satu baremetal saat create (gak bisa pindah server).
+  NEO Elastic Storage - block storage yang ke-bind permanen ke satu baremetal saat create (gak bisa pindah server).
 ---
 
 # biznetgio_baremetal_elastic_storage (Resource)
 
-NEO Elastic Storage — block storage yang ke-bind permanen ke satu baremetal saat create (gak bisa pindah server).
+NEO Elastic Storage - block storage yang ke-bind permanen ke satu baremetal saat create (gak bisa pindah server).
 
 ## Example Usage
 
@@ -34,9 +34,9 @@ resource "biznetgio_baremetal_elastic_storage" "main" {
 
 ### Optional
 
-- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order/upgrade. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar.
+- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order/upgrade. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar.
 - `promocode` (String) Kode promo.
-- `size` (Number) Ukuran storage dalam GB. Default 100. Kalau berubah, provider panggil upgrade (`PUT .../{account_id}`) — grow-only, set lebih kecil bakal ditolak API.
+- `size` (Number) Ukuran storage dalam GB. Default 100. Kalau berubah, provider panggil upgrade (`PUT .../{account_id}`) - grow-only, set lebih kecil bakal ditolak API.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

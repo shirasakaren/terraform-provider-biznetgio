@@ -3,12 +3,12 @@
 page_title: "biznetgio_object_storage_object Resource - biznetgio"
 subcategory: ""
 description: |-
-  Thin convenience wrapper to upload/delete a single object via the BiznetGIO control-plane API. Tidak cocok untuk object besar — untuk scale, pakai tooling S3-compatible langsung dengan credential dari resource credential.
+  Thin convenience wrapper to upload/delete a single object via the BiznetGIO control-plane API. Tidak cocok untuk object besar - untuk scale, pakai tooling S3-compatible langsung dengan credential dari resource credential.
 ---
 
 # biznetgio_object_storage_object (Resource)
 
-Thin convenience wrapper to upload/delete a single object via the BiznetGIO control-plane API. Tidak cocok untuk object besar — untuk scale, pakai tooling S3-compatible langsung dengan credential dari resource credential.
+Thin convenience wrapper to upload/delete a single object via the BiznetGIO control-plane API. Tidak cocok untuk object besar - untuk scale, pakai tooling S3-compatible langsung dengan credential dari resource credential.
 
 ## Example Usage
 

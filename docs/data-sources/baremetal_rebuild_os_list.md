@@ -3,12 +3,12 @@
 page_title: "biznetgio_baremetal_rebuild_os_list Data Source - biznetgio"
 subcategory: ""
 description: |-
-  List OS yang valid buat rebuild (GET /baremetals/{account_id}/rebuild/oss) — lebih sempit dari OS list create karena ngikutin layout disk instance.
+  List OS yang valid buat rebuild (GET /baremetals/{account_id}/rebuild/oss) - lebih sempit dari OS list create karena ngikutin layout disk instance.
 ---
 
 # biznetgio_baremetal_rebuild_os_list (Data Source)
 
-List OS yang valid buat rebuild (`GET /baremetals/{account_id}/rebuild/oss`) — lebih sempit dari OS list create karena ngikutin layout disk instance.
+List OS yang valid buat rebuild (`GET /baremetals/{account_id}/rebuild/oss`) - lebih sempit dari OS list create karena ngikutin layout disk instance.
 
 ## Example Usage
 

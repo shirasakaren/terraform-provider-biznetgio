@@ -43,6 +43,6 @@ Read-Only:
 
 - `maxcpu` (Number) CPU maksimal.
 - `maxmem` (Number) Memory maksimal (MB).
-- `name` (String) Nama OS — isi buat `select_os`.
+- `name` (String) Nama OS - isi buat `select_os`.
 - `node` (String) Node Proxmox.
 - `vmid` (Number) Id OS template.

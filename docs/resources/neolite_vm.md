@@ -34,7 +34,7 @@ resource "biznetgio_neolite_vm" "main" {
   cycle                = "m"
 }
 
-# Upgrade disk (absolute target GB — cuma bisa naik):
+# Upgrade disk (absolute target GB - cuma bisa naik):
 # disk_size = 100
 
 # Ganti power: power_state = "stop" (start/stop/suspend/resume/shutdown)
@@ -59,9 +59,9 @@ resource "biznetgio_neolite_vm" "main" {
 ### Optional
 
 - `description` (String) Deskripsi VM. Create-only: ga ada endpoint update, jadi nilai dari API yang dipakai.
-- `disk_size` (Number) Ukuran disk target (GB, absolute — bukan tambahan). Cuma bisa naik, bukan turun.
+- `disk_size` (Number) Ukuran disk target (GB, absolute - bukan tambahan). Cuma bisa naik, bukan turun.
 - `migrate_to_pro` (String) Trigger one-shot migrate ke NEO Lite Pro: isi `neolitepro_product_id` target (lihat data source `biznetgio_neolite_change_package_options` family). Ganti nilainya buat re-trigger.
-- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal — resource bakal stuck Pending sampai dibayar. Bisa diubah in-place via change-package/storage.
+- `pay_with_credit_card` (Boolean) Bayar invoice pake kartu kredit saat order. Default true (auto-charge). Set false kalau mau ninggalin invoice unpaid di portal - resource bakal stuck Pending sampai dibayar. Bisa diubah in-place via change-package/storage.
 - `power_state` (String) Power state VM: `start`, `stop`, `suspend`, `resume`, atau `shutdown`. Update cuma mengirim action kalau nilainya berubah.
 - `promocode` (String) Kode promo saat order.
 - `rebuild_os` (String) Kalau berubah, VM di-rebuild (wipe OS) pake OS baru via endpoint rebuild. List OS valid ada di data source `biznetgio_neolite_os_list`.
