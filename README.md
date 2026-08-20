@@ -70,11 +70,11 @@ resource "biznetgio_neolite_vm" "web" {
   ssh_and_console_user   = "root"
   console_password       = "change-this-now!"
   cycle                  = "m"
-  pay_with_credit_card   = true # 💳 bills the card on file, see below
+  pay_with_credit_card   = true # bills the card on file, see below
 }
 ```
 
-> **💳 Billing note**: `pay_with_credit_card` defaults to `true`, so the first `terraform apply` places a real
+> **Billing note**: `pay_with_credit_card` defaults to `true`, so the first `terraform apply` places a real
 > order and may charge the card on file. Set it to `false` to leave the order pending until you pay in the portal.
 
 ## What's covered
@@ -131,3 +131,5 @@ See the [development guide](https://biznetgio.creations.ren/guides/development) 
 ## License
 
 [MPL-2.0](LICENSE)
+
+
